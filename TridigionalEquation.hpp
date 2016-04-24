@@ -1,3 +1,4 @@
+#include <cstddef>
 struct TridigionalEquation {
 
 	TridigionalEquation(float* topDiag, float* midDiag, float* downDiag, size_t size);

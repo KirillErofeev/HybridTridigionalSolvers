@@ -1,6 +1,7 @@
 #include <CL/cl.h>
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <fstream>
 #include "initializer.hpp"
 
@@ -34,8 +35,9 @@ int convertToString(const char *filename, std::string& s)
 	return 1;
 }
 
-cl_kernel getKernelBySource(
-	cl_device_id* device, cl_context context, const char* sourceName, char* kernelName) {
+cl_kernel getKernelBySource(cl_device_id* device, cl_context context, 
+	const char* sourceName) {
+
 	cl_program program = getBuildBySource(sourceName, context, device);
 	cl_kernel kernel = clCreateKernel(program, "cr", NULL);
 	return kernel;
@@ -49,11 +51,13 @@ cl_program getProgramBySource(const char* sourceName, cl_context context) {
 	const char *source = sourceStr.c_str();
 	size_t sourceSize[] = { strlen(source) };
 
-	cl_program program = clCreateProgramWithSource(context, 1, &source, sourceSize, NULL);
+	cl_program program = clCreateProgramWithSource(
+		                      context, 1, &source, sourceSize, NULL);
 	return program;
 }
 
 cl_program getBuildBySource(const char* sourceName, cl_context context,const cl_device_id* device) {
+	
 	cl_program program = getProgramBySource(sourceName, context);
 
 	clBuildProgram(program, 1, device, NULL, NULL, NULL);

@@ -30,7 +30,8 @@ int TridigionalEquation::inverse(float* returns) {
 	cl_mem outBufDownDiagCr = clCreateBuffer(
 		context, CL_MEM_WRITE_ONLY, (size - 1) * sizeof(float), NULL, NULL);
 
-	cl_kernel crKernel = getKernelBySource(&device, context, "HelloWorld_kernel.cl", "crKernel");
+
+	cl_kernel crKernel = getKernelBySource(&device, context, "kernels/cr.cl");
 
 	std::vector<size_t> sizes = {
 		(size - 1)*sizeof(float), size*sizeof(float), (size - 1)*sizeof(float) };
