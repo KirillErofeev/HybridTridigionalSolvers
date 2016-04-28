@@ -1,12 +1,13 @@
-#include "TridigionalEquation.hpp"
+#include <iostream>
 #include <CL/cl.h>
 #include <string>
-#include "initializer.hpp"
-#include <iostream>
 #include <cstring>
+#include "TridigionalEquation.hpp"
+#include "initializer.hpp"
+
 int main(int argc, char* argv[]){
 	float inputTopDiag[] = { 2,5,3,3,2,1,5 };
-	float inputMiddleDiag[8] = { 1,4,2,5,2,4,3,3 };
+	float inputMiddleDiag[] = { 1,4,2,5,2,4,3,3 };
 	float inputDownDiag[] = { 3,1,4,1,2,2,1 };
 
 	TridigionalEquation e(inputTopDiag, inputMiddleDiag, inputDownDiag, 8);
@@ -15,6 +16,9 @@ int main(int argc, char* argv[]){
 
 	e.inverse(returns);
 
+	delete [] returns;
+
+	
 	// cl_uint numPlatforms;
 	// cl_platform_id platform = NULL;
 	// cl_int	status = clGetPlatformIDs(1, &platform, &numPlatforms);

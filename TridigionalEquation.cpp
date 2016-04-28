@@ -11,7 +11,7 @@ int TridigionalEquation::inverse(float* returns) {
 	cl_context context;
 
 	initCl(&device, &context);
-	cl_command_queue commandQueue = clCreateCommandQueue(context, device, 0, NULL);
+	cl_command_queue commandQueue = clCreateCommandQueueWithProperties(context, device, 0, NULL);
 	/*checkWith CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE*/
 
 	cl_mem inBufTopDiagCr = clCreateBuffer(
@@ -37,7 +37,8 @@ int TridigionalEquation::inverse(float* returns) {
 		(size - 1)*sizeof(float), size*sizeof(float), (size - 1)*sizeof(float) };
 	
 	writeBuffers (commandQueue, sizes,
-	{ inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr }, { topDiag, midDiag, downDiag });
+	{ inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr },
+	       { topDiag, midDiag, downDiag });
 
 	setKernelArguments (crKernel, sizeof(cl_mem),
 	{ &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr,

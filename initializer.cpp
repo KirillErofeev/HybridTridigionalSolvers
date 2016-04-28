@@ -41,7 +41,7 @@ cl_kernel getKernelBySource(cl_device_id* device, cl_context context,
 	cl_program program = getBuildBySource(sourceName, context, device);
 	cl_kernel kernel = clCreateKernel(program, "cr", NULL);
 	return kernel;
-	//clReleaseProgram(program); 
+	clReleaseProgram(program); 
 	//?
 }
 
@@ -56,7 +56,8 @@ cl_program getProgramBySource(const char* sourceName, cl_context context) {
 	return program;
 }
 
-cl_program getBuildBySource(const char* sourceName, cl_context context,const cl_device_id* device) {
+cl_program getBuildBySource(
+	const char* sourceName, cl_context context, const cl_device_id* device) {
 	
 	cl_program program = getProgramBySource(sourceName, context);
 
@@ -95,8 +96,8 @@ int initCl(cl_device_id* device, cl_context* context) {
 	return status;
 }
 
-void readBuffers(cl_command_queue commandQueue, 
-	std::vector<size_t> sizes, std::vector<cl_mem> bufers, std::vector<void*> outs) {
+void readBuffers(cl_command_queue commandQueue, std::vector<size_t>& sizes,
+ std::vector<cl_mem>&& bufers, std::vector<void*>&& outs) {
 
 	std::vector<size_t>::iterator sizesIter = sizes.begin();
 	std::vector<void*>::iterator outsIter = outs.begin();
@@ -108,8 +109,8 @@ void readBuffers(cl_command_queue commandQueue,
 	}
 }
 
-void writeBuffers(cl_command_queue commandQueue, std::vector<size_t> sizes, std::vector<cl_mem> bufers,
-	std::vector<void*> outs) {
+void writeBuffers(cl_command_queue commandQueue, std::vector<size_t>& sizes,
+ std::vector<cl_mem>&& bufers, std::vector<void*>&& outs) {
 
 	std::vector<size_t>::iterator sizesIter = sizes.begin();
 	std::vector<void*>::iterator outsIter = outs.begin();
@@ -121,14 +122,14 @@ void writeBuffers(cl_command_queue commandQueue, std::vector<size_t> sizes, std:
 	}
 }
 
-void releaseMemObject(std::vector<cl_mem> vec){
+void releaseMemObject(std::vector<cl_mem>&& vec){
 	for (std::vector<cl_mem>::iterator iter = vec.begin(); iter != vec.end(); ++iter){
 		clReleaseMemObject(*iter);
 	}
 }
 
 void setKernelArguments(
-	cl_kernel kernel, size_t size, std::vector<void *> kernelArgs) {
+	cl_kernel kernel, size_t size, std::vector<void *>&& kernelArgs) {
 	int i = 0;
 	for (auto iter = kernelArgs.begin(); iter != kernelArgs.end(); ++iter, ++i) {
 		clSetKernelArg(kernel, i, size, *iter);
