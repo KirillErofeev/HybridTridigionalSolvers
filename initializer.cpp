@@ -1,16 +1,17 @@
 #include <CL/cl.h>
 #include <iostream>
-#include <string>
 #include <cstring>
 #include <fstream>
 #include "initializer.hpp"
+
+#define SUPPOSED_LOG_SIZE 1000
 
 int convertToString(const char *filename, std::string& s)
 {
 	size_t size;
 	char*  str;
 	std::fstream f(filename, (std::fstream::in | std::fstream::binary));
-
+//	f.open(filename, (std::fstream::in | std::fstream::binary));
 	if (f.is_open())
 	{
 		size_t fileSize;
@@ -18,16 +19,11 @@ int convertToString(const char *filename, std::string& s)
 		size = fileSize = (size_t)f.tellg();
 		f.seekg(0, std::fstream::beg);
 		str = new char[size + 1];
-		if (!str)
-		{
-			f.close();
-			return 0;
-		}
-
 		f.read(str, fileSize);
 		f.close();
 		str[size] = '\0';
 		s = str;
+//        std::cout << str;
 		delete[] str;
 		return 0;
 	}
@@ -40,9 +36,8 @@ cl_kernel getKernelBySource(cl_device_id* device, cl_context context,
 
 	cl_program program = getBuildBySource(sourceName, context, device);
 	cl_kernel kernel = clCreateKernel(program, "cr", NULL);
+	clReleaseProgram(program);
 	return kernel;
-	clReleaseProgram(program); 
-	//?
 }
 
 cl_program getProgramBySource(const char* sourceName, cl_context context) {
@@ -65,8 +60,12 @@ cl_program getBuildBySource(
 
 	cl_ulong buildStatus = 1;
 	clGetProgramBuildInfo(program, *device, CL_PROGRAM_BUILD_STATUS, 8, (void *)&buildStatus, NULL);
-	if (buildStatus != CL_BUILD_SUCCESS) 
+	if (buildStatus != CL_BUILD_SUCCESS) {
 		std::cout << "Compilation error!" << std::endl;
+        char* buildSt = new char[SUPPOSED_LOG_SIZE];
+        clGetProgramBuildInfo(program, *device, CL_PROGRAM_BUILD_LOG, SUPPOSED_LOG_SIZE, buildSt, NULL);
+        std::cout << buildSt << std::endl;
+	}
 	return program;
 
 }
@@ -92,7 +91,7 @@ int initCl(cl_device_id* device, cl_context* context) {
 			return 1;
 		}
 	}
-	*context = clCreateContext(NULL, 1, device, NULL, NULL, NULL);
+    *context = clCreateContext(NULL, 1, device, NULL, NULL, NULL);
 	return status;
 }
 

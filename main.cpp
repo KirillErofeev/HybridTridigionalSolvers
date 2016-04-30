@@ -5,8 +5,6 @@
 #include <iostream>
 int main(int argc, char* argv[]){
 
-	float a[] = {-0.83333};
-	std::cout << std::to_string(a[0]) << " " <<  -0.83333;
 	float inputTopDiag[] = { 2,5,3,3,2,1,5 };
 	float inputMiddleDiag[] = { 1,4,2,5,2,4,3,3 };
 	float inputDownDiag[] = { 3,1,4,1,2,2,1 };
@@ -14,9 +12,12 @@ int main(int argc, char* argv[]){
 
 	TridigionalEquation e(inputTopDiag, inputMiddleDiag, inputDownDiag, inputFreeMembers, 8);
 
+	std::cout << e << std::endl;
 	float* returns = new float[8];
 
 	e.inverse(returns);
+
+	std::cout << e << std::endl;
 
 	return 0;
 }

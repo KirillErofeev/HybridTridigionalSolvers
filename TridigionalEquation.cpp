@@ -38,7 +38,7 @@ int TridigionalEquation::inverse(float* returns) {
 	cl_mem outBufFreeMembers = clCreateBuffer(
 		context, CL_MEM_WRITE_ONLY, size * sizeof(float), NULL, NULL);
 
-	cl_kernel crKernel = getKernelBySource(&device, context, "kernels/cr.cl");
+	cl_kernel crKernel = getKernelBySource(&device, context, "/home/love/ClionProjects/HybridTridigionalSolver/kernels/cr.cl");
 
 	std::vector<size_t> sizes = {
 		(size - 1)*sizeof(float), size*sizeof(float), 
@@ -63,7 +63,7 @@ int TridigionalEquation::inverse(float* returns) {
 		{ outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers },
 		{ topDiag, midDiag, downDiag, freeMembers });
 
-	std::cout << *this;
+//	std::cout << *this;
 
 	clReleaseKernel (crKernel);
 	releaseMemObject(
@@ -79,6 +79,8 @@ int TridigionalEquation::inverse(float* returns) {
 
 	return 0;
 }
+
+
 
 std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
 	struct space{
@@ -127,12 +129,12 @@ std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
 	os << space.printZero(eq.size - 2);
 
 	os<< eq.freeMembers[0] << std::endl;
-	for(int i = 0; i < eq.size-3; ++i){
-		int j = i;
-		os << space.printZero(j);
-		os << space.print(eq.downDiag[i]) << space.print(eq.midDiag[i]) << space.print(eq.topDiag[i]);
+	for(size_t i = 1; i < eq.size-1; ++i){
+		size_t j = i;
+		os << space.printZero(j-1);
+		os << space.print(eq.downDiag[i-1]) << space.print(eq.midDiag[i]) << space.print(eq.topDiag[i]);
 		
-		int lasts = eq.size - i - 3;
+		int lasts = eq.size - i - 2;
 		if(lasts > 0)
 			os << space.printZero(lasts);
 		os << eq.freeMembers[i] << std::endl;
@@ -140,82 +142,23 @@ std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
 
 	os << space.printZero(eq.size - 2);
 
-	os << space.print(eq.midDiag[eq.size-2])<< space.print(eq.topDiag[eq.size - 3]) << 
-	  eq.freeMembers[eq.size-2] << "\n\n\n";
+	os << space.print(eq.downDiag[eq.size-2])<< space.print(eq.midDiag[eq.size - 1]) <<
+	  eq.freeMembers[eq.size-1] << "\n\n\n";
 	
-	for(int i =0; i<eq.size-2; ++i){
+	for(int i =0; i<eq.size-1; ++i){
 		os << eq.topDiag[i] << " ";
 	}
 	os << "\n";
-	for(int i =0; i<eq.size-1; ++i){
+	for(int i =0; i<eq.size; ++i){
 		os << eq.midDiag[i] << " ";
 	}
 	os << "\n";
-	for(int i =0; i<eq.size-2; ++i){
+	for(int i =0; i<eq.size-1; ++i){
 		os << eq.downDiag[i] << " ";
 	}
 	os << "\n";
-	for(int i =0; i<eq.size-1; ++i){
+	for(int i =0; i<eq.size; ++i){
 		os << eq.freeMembers[i] << " ";
 	}
 	os << "\n";
 }
-
-// std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
-// 	struct space{
-
-// 		space(size_t spaces) : stSpaces(spaces){}
-// 		std::string print(float f){
-// 			std::string out = std::to_string(f);
-// 			return out.append(printSpaces( stSpaces - out.size()-1 ));
-// 		}
-// 		std::string printZero(size_t n){
-// 			std::string out;
-// 			while(n--){
-// 				out.push_back('0');
-// 				out.append(printChar(' ', stSpaces));
-// 			}
-// 			return out;
-// 		}
-// 		std::string printSpaces(size_t n) { return printChar(' ', n); }
-// 		std::string printSpaces() { return printChar(' ', stSpaces); }
-
-// 	private:	
-// 		std::string printChar(char ch, size_t n){
-// 			std::string out;
-// 			while(n--)
-// 				out.push_back(ch);
-// 			return out;
-// 		}
-
-// 	private:
-// 		size_t stSpaces;
-
-// 	} s(8);
-
-// 	const char* space = " ";
-// 	os << eq.midDiag[0] << space << eq.topDiag[0] << space;
-// 	int f = eq.size - 2;
-// 	while(f-- > 0)
-// 		os << "0" << space;
-
-// 	os<< eq.freeMembers[0] << std::endl;
-// 	for(int i = 0; i < eq.size-2; ++i){
-// 		int j = i;
-// 		while(j-- > 0){
-// 			os << "0" << space;
-// 		}
-// 		os << eq.downDiag[i] << space << eq.midDiag[i] << space << eq.topDiag[i] << space;
-// 		int l = eq.size - i - 3;
-// 		while(l-->0){
-// 			os << "0" << space;
-// 		}
-// 		os << eq.freeMembers[i] << std::endl;
-// 	}
-// 	int ls = eq.size - 2;
-// 	while(ls--){
-// 		os << "0" << space;
-// 	}
-// 	os << eq.midDiag[eq.size-1] << space << eq.topDiag[eq.size - 2] << space << 
-// 	  eq.freeMembers[eq.size-1] << std::endl;
-// }

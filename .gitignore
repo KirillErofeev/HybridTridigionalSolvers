@@ -5,3 +5,4 @@
 !*.hpp
 !*.txt
 !.gitignore
+CMakeLists.txt
