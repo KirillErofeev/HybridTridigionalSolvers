@@ -18,25 +18,18 @@ int TridigionalEquation::inverse(float* returns) {
 		clCreateCommandQueueWithProperties(context, device, 0, NULL);
 	/*checkWith CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE*/
 
-	cl_mem inBufTopDiagCr = clCreateBuffer(
-		context, CL_MEM_READ_ONLY, (size - 1) * sizeof(float), NULL, NULL);
-	/*checkWith? CL_MEM_USE_HOST_PTR, CL_MEM_ALLOC_HOST_PTR, CL_MEM_COPY_HOST_PTR*/
+	cl_mem inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers,
+	       outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers;
 
-	/*creating Buffers for cr*/
-	cl_mem inBufMidDiagCr = clCreateBuffer(
-		context, CL_MEM_READ_ONLY , size * sizeof(float), NULL, NULL);
-	cl_mem inBufDownDiagCr = clCreateBuffer(
-		context, CL_MEM_READ_ONLY, (size-1) * sizeof(float), NULL, NULL);
-	cl_mem inBufFreeMembers = clCreateBuffer(
-		context, CL_MEM_READ_ONLY, size * sizeof(float), NULL, NULL);
-	cl_mem outBufTopDiagCr = clCreateBuffer(
-		context, CL_MEM_WRITE_ONLY, (size - 1) * sizeof(float), NULL, NULL);
-	cl_mem outBufMidDiagCr = clCreateBuffer(
-		context, CL_MEM_WRITE_ONLY, size * sizeof(float), NULL, NULL);
-	cl_mem outBufDownDiagCr = clCreateBuffer(
-		context, CL_MEM_WRITE_ONLY, (size - 1) * sizeof(float), NULL, NULL);
-	cl_mem outBufFreeMembers = clCreateBuffer(
-		context, CL_MEM_WRITE_ONLY, size * sizeof(float), NULL, NULL);
+	createBuffers(context, CL_MEM_READ_ONLY,
+				  {(size - 1) * sizeof(float), size * sizeof(float),
+				   (size-1) * sizeof(float), size * sizeof(float)},
+				   {&inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers});
+
+    createBuffers(context, CL_MEM_WRITE_ONLY,
+                  {(size - 1) * sizeof(float), size * sizeof(float),
+                   (size-1) * sizeof(float), size * sizeof(float)},
+                  {&outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers});
 
 	cl_kernel crKernel = getKernelBySource(&device, context, "/home/love/ClionProjects/HybridTridigionalSolver/kernels/cr.cl");
 
@@ -62,8 +55,7 @@ int TridigionalEquation::inverse(float* returns) {
 		commandQueue, sizes, 
 		{ outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers },
 		{ topDiag, midDiag, downDiag, freeMembers });
-
-//	std::cout << *this;
+    
 
 	clReleaseKernel (crKernel);
 	releaseMemObject(

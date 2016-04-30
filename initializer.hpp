@@ -16,5 +16,8 @@ void writeBuffers(cl_command_queue commandQueue, std::vector<size_t>& sizes,
 void readBuffers(cl_command_queue commandQueue, std::vector<size_t>& sizes,
  std::vector<cl_mem>&& bufers, std::vector<void*>&& outs);
 void setKernelArguments(cl_kernel kernel, size_t size, std::vector<void *>&& kernelArgs);
+void createBuffers(cl_context context, cl_mem_flags flag, std::vector<size_t>&& sizes,
+				   std::vector<cl_mem*>&& buffers);
 int convertToString(const char *filename, std::string& s);
+
 #endif

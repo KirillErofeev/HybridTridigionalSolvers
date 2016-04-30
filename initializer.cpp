@@ -116,7 +116,6 @@ void writeBuffers(cl_command_queue commandQueue, std::vector<size_t>& sizes,
 	for(auto iter = bufers.begin(); iter != bufers.end(); ++iter, ++outsIter,++sizesIter){
 		clEnqueueWriteBuffer(
 			commandQueue, *iter, true, 0, *sizesIter, *outsIter, 0, NULL, NULL);
-		size_t t = bufers.size();
 		/*checkWith? blocking write*/
 	}
 }
@@ -133,5 +132,16 @@ void setKernelArguments(
 	for (auto iter = kernelArgs.begin(); iter != kernelArgs.end(); ++iter, ++i) {
 		clSetKernelArg(kernel, i, size, *iter);
 		//*checkWith& size*/
+	}
+}
+
+void createBuffers(cl_context context, cl_mem_flags flag, std::vector<size_t>&& sizes,
+                    std::vector<cl_mem*>&& buffers) {
+
+	auto sizesIter = sizes.begin();
+	for(auto iter = buffers.begin(); iter != buffers.end(); ++iter, ++sizesIter){
+        **iter = clCreateBuffer(
+                context, flag, *sizesIter, NULL, NULL);
+        /*checkWith? CL_MEM_USE_HOST_PTR, CL_MEM_ALLOC_HOST_PTR, CL_MEM_COPY_HOST_PTR*/
 	}
 }
