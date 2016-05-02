@@ -23,12 +23,12 @@ int TridigionalEquation::inverse(float* returns) {
 	cl_mem inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers,
 	       outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers;
 
-	createBuffers(context, CL_MEM_READ_ONLY,
+	createBuffers(context, CL_MEM_READ_WRITE,
 				  {(size - 1) * sizeof(float), size * sizeof(float),
 				   (size-1) * sizeof(float), size * sizeof(float)},
 				   {&inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers});
 
-    createBuffers(context, CL_MEM_WRITE_ONLY,
+    createBuffers(context, CL_MEM_READ_WRITE,
                   {(size - 1) * sizeof(float), size * sizeof(float),
                    (size-1) * sizeof(float), size * sizeof(float)},
                   {&outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers});
@@ -45,27 +45,41 @@ int TridigionalEquation::inverse(float* returns) {
                   { topDiag, midDiag, downDiag, freeMembers });
 
    /*Create kernels*/
-	cl_kernel crKernel = getKernelBySource(
-			&device, context, "/home/love/Projects/C/hpc/HybridTridigionalSolvers/kernels/cr.cl");
-
+    cl_program program = getBuildBySource(
+            "/home/love/Projects/C/hpc/HybridTridigionalSolvers/kernels/cr.cl", context, &device);
+	cl_kernel crKernel = clCreateKernel(program, "cr", NULL);
 	setKernelArguments (crKernel, sizeof(cl_mem),
 	{ &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers,
 	  &outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers });
 
+    cl_kernel crInverseKernel = clCreateKernel(program, "cr", NULL);
+    setKernelArguments (crInverseKernel, sizeof(cl_mem),
+    { &outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers,
+      &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers });
 
-//    size_t numberOfEqs = size/2;
-//    for(int i =0; numberOfEqs>2; i++) {
-//        const size_t globalWorkSize[1] = {numberOfEqs};
-//        clEnqueueNDRangeKernel(commandQueue, crKernel, 1, NULL, globalWorkSize, 0, 0, NULL, NULL);
-//    }
 
-    const size_t globalWorkSize[1] = {4};
-        clEnqueueNDRangeKernel(commandQueue, crKernel, 1, NULL, globalWorkSize, 0, 0, NULL, NULL);
-    
-	readBuffers (
-		commandQueue, sizes,
-		{ outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers },
-		{ topDiag, midDiag, downDiag, freeMembers });
+
+    size_t numberOfEqs = size;
+    bool s = true;
+    for(; numberOfEqs>2; s = !s) {
+        const size_t globalWorkSize[1] = {numberOfEqs/2};
+        clEnqueueNDRangeKernel( commandQueue, s ? crKernel : crInverseKernel,
+                                1, NULL, globalWorkSize, 0, 0, NULL, NULL);
+        numberOfEqs/=2;
+    }
+
+    if(s){readBuffers (
+                commandQueue, sizes,
+                {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
+                { topDiag, midDiag, downDiag, freeMembers });
+    }else{
+        readBuffers (
+                commandQueue, sizes,
+                {outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers},
+                { topDiag, midDiag, downDiag, freeMembers });
+    }
+
+
 
 
 	clReleaseKernel (crKernel);
