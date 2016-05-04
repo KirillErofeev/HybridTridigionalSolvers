@@ -63,8 +63,11 @@ cl_program getBuildBySource(
 	if (buildStatus != CL_BUILD_SUCCESS) {
 		std::cout << "Compilation error!" << std::endl;
         char* buildSt = new char[SUPPOSED_LOG_SIZE];
-        clGetProgramBuildInfo(program, *device, CL_PROGRAM_BUILD_LOG, SUPPOSED_LOG_SIZE, buildSt, NULL);
-        std::cout << buildSt << std::endl;
+        size_t n = 0;
+        clGetProgramBuildInfo(
+                program, *device,   CL_PROGRAM_BUILD_STATUS  , SUPPOSED_LOG_SIZE, buildSt, &n);
+        std::cout << buildSt << "   " << n << std::endl;
+		delete [] buildSt ;
 	}
 	return program;
 

@@ -1,48 +1,48 @@
 __kernel void cr(
         __global float* topDiag, __global float* midDiag,
-        __global float* downDiag, __global float* freeMembers,
-        __global float* outTopDiag, __global float* outMidDiag,
-        __global float* outDownDiag, __global float* outFreeMembers) {
+        __global float* downDiag, __global float* freeMembers, unsigned numberOfReduction) {
 
-    unsigned  i = get_global_id(0);
-    unsigned  eq = (i<<1) + 1;
+    unsigned  offset = numberOfReduction-1; //1
+    unsigned  eq = ((get_global_id(0) + 1) << numberOfReduction) - 1;//3
 
-    if(i>0) {
-        if(i < get_global_size(0)-1){
+    float ab = downDiag[eq-1] / midDiag[eq - (1<<offset)];// -2/-4.5
+
+    if(get_global_id(0) > 0) {
+        if(get_global_id(0) < get_global_size(0)-1){
             /*Common case */
-            float ab = downDiag[eq-1] / midDiag[eq - 1];
-            float cb = topDiag[eq] / midDiag[eq + 1];
+            float cb = topDiag[eq] / midDiag[eq + (1<<offset)];
 
-            outDownDiag[i-1] = -downDiag[eq-2] * ab;
-            outMidDiag[i] = midDiag[eq] - topDiag[eq-1] * ab - downDiag[eq] * cb;
-            outTopDiag[i] = -topDiag[eq+1] * cb;
-            outFreeMembers[i] = freeMembers[eq] - freeMembers[eq-1] * ab - freeMembers[eq+1] * cb;
+            downDiag[eq-1] = -downDiag[eq-(1<<offset)-1] * ab;
+            midDiag[eq] = midDiag[eq] - topDiag[eq-(1<<offset)] * ab - downDiag[eq-1+(1<<offset)] * cb;
+            topDiag[eq] = -topDiag[eq+(1<<offset)] * cb;
+            freeMembers[eq] = freeMembers[eq] - freeMembers[eq-(1<<offset)] * ab -
+                    freeMembers[eq+(1<<offset)] * cb;
         }else{
             if(!(get_global_size(0) % 2)){
-
                 /*Last eq, even number of eqs*/
-                float ab = downDiag[eq-1] / midDiag[eq - 1];
 
-                outDownDiag[i-1] = -downDiag[eq-2] * ab;
-                outMidDiag[i] = midDiag[eq] - topDiag[eq-1] * ab;
-                outFreeMembers[i] = freeMembers[eq] - freeMembers[eq-1] * ab;
+                downDiag[eq-1] = -downDiag[eq-(1<<offset)-1] * ab;
+                midDiag[eq] = midDiag[eq] - topDiag[eq-(1<<offset)] * ab;
+                freeMembers[eq] = freeMembers[eq] - freeMembers[eq-(1<<offset)] * ab;
             }else{
                 /*Last eq, odd number of eqs*/
-                float ab = downDiag[eq-1] / midDiag[eq-1];
-                float cb = topDiag[eq] / midDiag[eq + 1];
+                float cb = topDiag[eq] / midDiag[eq + (1<<offset)];
 
-                outDownDiag[i-1] = -downDiag[eq-2] * ab;
-                outMidDiag[i] = midDiag[eq] - topDiag[eq-1] * ab - downDiag[eq] * cb;
-                outFreeMembers[i] = freeMembers[eq] - freeMembers[eq-1] * ab - freeMembers[eq+1] * cb;
+                downDiag[eq-1] = -downDiag[eq-(1<<offset)-1] * ab;
+                midDiag[eq] = midDiag[eq] - topDiag[eq-(1<<offset)] * ab
+                              - downDiag[eq-1+(1<<offset)] * cb;
+                freeMembers[eq] = freeMembers[eq] - freeMembers[eq-(1<<offset)] * ab -
+                                     freeMembers[eq+(1<<offset)] * cb;
             }
         }
     }else{
         /*First eq*/
-        float ab = downDiag[eq-1] / midDiag[eq - 1];
-        float cb = topDiag[eq] / midDiag[eq + 1]; //2.5
+        float cb = topDiag[eq] / midDiag[eq + (1<<offset)]; //-3/1.33333
 
-        outMidDiag[i] = midDiag[eq] - topDiag[eq-1] * ab - downDiag[eq] * cb; //4-6 - 1,25
-        outTopDiag[i] = -topDiag[eq+1] * cb;
-        outFreeMembers[i] = freeMembers[eq] - freeMembers[eq-1] * ab - freeMembers[eq+1] * cb;
+        midDiag[eq] = midDiag[eq] - topDiag[eq-(1<<offset)] * ab
+                      - downDiag[eq-1 + (1<<offset)] * cb;//-2.5-7.5/2.25 -
+        topDiag[eq] = -topDiag[eq+(1<<offset)] * cb;
+        freeMembers[eq] = freeMembers[eq] - freeMembers[eq-(1<<offset)] * ab -
+                             freeMembers[eq+(1<<offset)] * cb;
     }
 }

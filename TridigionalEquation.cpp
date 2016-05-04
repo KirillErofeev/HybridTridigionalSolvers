@@ -3,6 +3,7 @@
 #include <CL/cl.h>
 #include "TridigionalEquation.hpp"
 #include "initializer.hpp"
+#include "tools.hpp"
 
 TridigionalEquation::TridigionalEquation(
 	float* topDiag, float* midDiag, float* downDiag, float* freeMembers, size_t size)
@@ -15,12 +16,13 @@ int TridigionalEquation::inverse(float* returns) {
 	cl_context context;
 
 	initCl(&device, &context);
-	cl_command_queue commandQueue = 
+	cl_command_queue commandQueue =
 		clCreateCommandQueueWithProperties(context, device, 0, NULL);
 	/*checkWith CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE*/
 
     /* Create buffers*/
-	cl_mem inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers,
+    /* Create kernel arguments */
+    cl_mem inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers,
 	       outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers;
 
 	createBuffers(context, CL_MEM_READ_WRITE,
@@ -36,6 +38,7 @@ int TridigionalEquation::inverse(float* returns) {
     float* outTopDiag = new float[size - 1], *outMidDiag = new float[size],
             *outDownDiag = new float[size - 1], *outFreeMembers = new float[size];
 
+
     std::vector<size_t> sizes = {
             (size - 1)*sizeof(float), size*sizeof(float),
             (size - 1)*sizeof(float), size*sizeof(float) };
@@ -44,55 +47,60 @@ int TridigionalEquation::inverse(float* returns) {
                   { inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers },
                   { topDiag, midDiag, downDiag, freeMembers });
 
-   /*Create kernels*/
+    /*Create kernels*/
     cl_program program = getBuildBySource(
-            "/home/love/Projects/C/hpc/HybridTridigionalSolvers/kernels/cr.cl", context, &device);
+            "kernels/cr.cl", context, &device);
 	cl_kernel crKernel = clCreateKernel(program, "cr", NULL);
 	setKernelArguments (crKernel, sizeof(cl_mem),
-	{ &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers,
-	  &outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers });
-
-    cl_kernel crInverseKernel = clCreateKernel(program, "cr", NULL);
-    setKernelArguments (crInverseKernel, sizeof(cl_mem),
-    { &outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers,
-      &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers });
+	{ &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers });
 
 
 
     size_t numberOfEqs = size;
-    bool s = true;
-    for(; numberOfEqs>2; s = !s) {
+    size_t i = 1;
+    for(; numberOfEqs>2; ++i) {
         const size_t globalWorkSize[1] = {numberOfEqs/2};
-        clEnqueueNDRangeKernel( commandQueue, s ? crKernel : crInverseKernel,
+        clSetKernelArg(crKernel, 4, 4, &i);
+        clEnqueueNDRangeKernel( commandQueue, crKernel,
                                 1, NULL, globalWorkSize, 0, 0, NULL, NULL);
         numberOfEqs/=2;
     }
 
-    if(s){readBuffers (
-                commandQueue, sizes,
+    readBuffers (commandQueue, sizes, //TODO DEBUG
                 {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
                 { topDiag, midDiag, downDiag, freeMembers });
-    }else{
-        readBuffers (
-                commandQueue, sizes,
-                {outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers},
-                { topDiag, midDiag, downDiag, freeMembers });
+
+    readBuffers (commandQueue, sizes,
+                 {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
+                 { outTopDiag, outMidDiag, outDownDiag, outFreeMembers });
+
+    if(numberOfEqs==2){
+        size_t eq1 = (1 << (i-1)) - 1;
+        size_t eq2 = (2 << (i-1)) - 1;
+        float x1 = 0;
+        float x2 = 0;
+        solveTwoUnknowsSystem({outMidDiag[eq1], outDownDiag[eq2-1], outTopDiag[eq1], outMidDiag[eq2],
+                               outFreeMembers[eq1], outFreeMembers[eq2]}, x1, x2);
+        std::cout << x1 << " " << x2 << "\n";
+
+    }else{   /*numberOfEqs==1*/
+        size_t eq1 = (1 << (i-1)) - 1;
+        float x1 = -outFreeMembers[eq1]/outMidDiag[eq1];
+        
     }
 
 
-
-
-	clReleaseKernel (crKernel);
+    clReleaseKernel (crKernel);
 	releaseMemObject(
 	{ inBufTopDiagCr, inBufMidDiagCr,  inBufDownDiagCr,
 	  outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr });
 	clReleaseCommandQueue(commandQueue);
 	clReleaseContext(context);
 
-	delete [] outTopDiag;
-	delete [] outMidDiag;
-	delete [] outDownDiag;
-	delete [] outFreeMembers;
+//	delete [] outTopDiag;
+//	delete [] outMidDiag;
+//	delete [] outDownDiag;
+//	delete [] outFreeMembers;
 
 	return 0;
 }
@@ -129,7 +137,7 @@ std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
 			return string.substr(0,size-i);
 		}
 
-	private:	
+	private:
 		std::string printChar(char ch, size_t n){
 			std::string out;
 			while(n--)
@@ -150,7 +158,7 @@ std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
 		size_t j = i;
 		os << space.printZero(j-1);
 		os << space.print(eq.downDiag[i-1]) << space.print(eq.midDiag[i]) << space.print(eq.topDiag[i]);
-		
+
 		int lasts = eq.size - i - 2;
 		if(lasts > 0)
 			os << space.printZero(lasts);
@@ -161,7 +169,7 @@ std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
 
 	os << space.print(eq.downDiag[eq.size-2])<< space.print(eq.midDiag[eq.size - 1]) <<
 	  eq.freeMembers[eq.size-1] << "\n\n\n";
-	
+
 	for(int i =0; i<eq.size-1; ++i){
 		os << eq.topDiag[i] << " ";
 	}
