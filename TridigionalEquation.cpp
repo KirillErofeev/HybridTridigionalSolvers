@@ -1,23 +1,25 @@
 #include <iostream>
-#include <string>
 #include <CL/cl.h>
+#include <cmath>
 #include "TridigionalEquation.hpp"
 #include "initializer.hpp"
 #include "tools.hpp"
+#include "ClInit.hpp"
 
 TridigionalEquation::TridigionalEquation(
-	float* topDiag, float* midDiag, float* downDiag, float* freeMembers, size_t size)
-	: topDiag(topDiag), midDiag(midDiag), downDiag(downDiag),
-	                    freeMembers(freeMembers), size(size) {}
+	float* topDiag, float* midDiag, float* downDiag, float* freeMembers, size_t size) :
+		topDiag(topDiag), midDiag(midDiag), downDiag(downDiag),
+		freeMembers(freeMembers), size(size), isSolve(false) { unknows = new float[size];}
 
-int TridigionalEquation::inverse(float* returns) {
+TridigionalEquation::~TridigionalEquation(){
+	delete [] unknows;
+}
+int TridigionalEquation::inverse(){
 
 	cl_device_id device;
 	cl_context context;
-
-	initCl(&device, &context);
-	cl_command_queue commandQueue =
-		clCreateCommandQueueWithProperties(context, device, 0, NULL);
+	ClInit::init(&device, &context);
+	cl_command_queue commandQueue = clCreateCommandQueueWithProperties(context, device, NULL, NULL);
 	/*checkWith CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE*/
 
     /* Create buffers*/
@@ -25,23 +27,19 @@ int TridigionalEquation::inverse(float* returns) {
     cl_mem inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers,
 	       outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers;
 
-	createBuffers(context, CL_MEM_READ_WRITE,
-				  {(size - 1) * sizeof(float), size * sizeof(float),
-				   (size-1) * sizeof(float), size * sizeof(float)},
-				   {&inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers});
-
-    createBuffers(context, CL_MEM_READ_WRITE,
-                  {(size - 1) * sizeof(float), size * sizeof(float),
-                   (size-1) * sizeof(float), size * sizeof(float)},
-                  {&outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers});
-
-    float* outTopDiag = new float[size - 1], *outMidDiag = new float[size],
-            *outDownDiag = new float[size - 1], *outFreeMembers = new float[size];
-
-
     std::vector<size_t> sizes = {
             (size - 1)*sizeof(float), size*sizeof(float),
             (size - 1)*sizeof(float), size*sizeof(float) };
+
+	createBuffers(context, CL_MEM_READ_WRITE, sizes,
+				   {&inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers});
+
+    createBuffers(context, CL_MEM_READ_WRITE, sizes,
+                  {&outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers});
+
+
+    float* outTopDiag = new float[size - 1], *outMidDiag = new float[size],
+            *outDownDiag = new float[size - 1], *outFreeMembers = new float[size];
 
     writeBuffers (commandQueue, sizes,
                   { inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers },
@@ -49,58 +47,91 @@ int TridigionalEquation::inverse(float* returns) {
 
     /*Create kernels*/
     cl_program program = getBuildBySource(
-            "kernels/cr.cl", context, &device);
-	cl_kernel crKernel = clCreateKernel(program, "cr", NULL);
-	setKernelArguments (crKernel, sizeof(cl_mem),
+            "kernels/fr.cl", context, &device);
+	cl_kernel frKernel = clCreateKernel(program, "fr", NULL);
+	setKernelArguments (frKernel, sizeof(cl_mem),
 	{ &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers });
 
 
+    /*Forward reduction*/
+
+    size_t* isEvenNumberOfEqs = new size_t[(size_t) (log(size)/log(2)+2)];
 
     size_t numberOfEqs = size;
-    size_t i = 1;
-    for(; numberOfEqs>2; ++i) {
+    size_t numberOfStep = 1;
+    for(; numberOfEqs>2; ++numberOfStep) {
+        isEvenNumberOfEqs[numberOfStep-1] = numberOfEqs & 1;
         const size_t globalWorkSize[1] = {numberOfEqs/2};
-        clSetKernelArg(crKernel, 4, 4, &i);
-        clEnqueueNDRangeKernel( commandQueue, crKernel,
+        clSetKernelArg(frKernel, 4, 4, &numberOfStep);
+        clEnqueueNDRangeKernel( commandQueue, frKernel,
                                 1, NULL, globalWorkSize, 0, 0, NULL, NULL);
         numberOfEqs/=2;
     }
+    --numberOfStep;
 
-    readBuffers (commandQueue, sizes, //TODO DEBUG
-                {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
-                { topDiag, midDiag, downDiag, freeMembers });
+
+//    readBuffers (commandQueue, sizes,
+//                {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
+//                { topDiag, midDiag, downDiag, freeMembers });
 
     readBuffers (commandQueue, sizes,
                  {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
                  { outTopDiag, outMidDiag, outDownDiag, outFreeMembers });
 
     if(numberOfEqs==2){
-        size_t eq1 = (1 << (i-1)) - 1;
-        size_t eq2 = (2 << (i-1)) - 1;
-        float x1 = 0;
-        float x2 = 0;
-        solveTwoUnknowsSystem({outMidDiag[eq1], outDownDiag[eq2-1], outTopDiag[eq1], outMidDiag[eq2],
-                               outFreeMembers[eq1], outFreeMembers[eq2]}, x1, x2);
-        std::cout << x1 << " " << x2 << "\n";
-
+        size_t eq1 = (1 << (numberOfStep)) - 1;
+        size_t eq2 = (2 << (numberOfStep)) - 1;
+        solveTwoUnknowsSystem({outMidDiag[eq1], outDownDiag[eq2-1], outTopDiag[eq1],
+                               outMidDiag[eq2], outFreeMembers[eq1], outFreeMembers[eq2]},
+                              unknows[eq1], unknows[eq2]);
     }else{   /*numberOfEqs==1*/
-        size_t eq1 = (1 << (i-1)) - 1;
-        float x1 = -outFreeMembers[eq1]/outMidDiag[eq1];
-        
+        size_t eq1 = (1 << (numberOfStep)) - 1;
+		unknows[eq1] = outFreeMembers[eq1]/outMidDiag[eq1];
     }
 
+    /*Backward substitution*/
+    cl_mem unknowsBuff =
+            clCreateBuffer(context, CL_MEM_READ_WRITE, size*sizeof(float), NULL, NULL);
+    clEnqueueWriteBuffer(
+            commandQueue, unknowsBuff, true, 0, size*sizeof(float), unknows, 0, NULL, NULL);
 
-    clReleaseKernel (crKernel);
+    cl_program bsProgram = getBuildBySource(
+            "kernels/bs.cl", context, &device);
+    cl_kernel bsKernel = clCreateKernel(bsProgram, "bs", NULL);
+
+    setKernelArguments(bsKernel, sizeof(cl_mem),
+                       { &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers
+                               , &unknowsBuff });
+
+    for(; numberOfStep>0; --numberOfStep) {
+        const size_t globalWorkSize[1] = {numberOfEqs+isEvenNumberOfEqs[numberOfStep-1]};
+        clSetKernelArg(bsKernel, 5, 4, &numberOfStep);
+        clSetKernelArg(bsKernel, 6, 4, isEvenNumberOfEqs+numberOfStep-1);
+        clEnqueueNDRangeKernel( commandQueue, bsKernel,
+                                1, NULL, globalWorkSize, 0, 0, NULL, NULL);
+            numberOfEqs = (numberOfEqs<<1) + isEvenNumberOfEqs[numberOfStep-1];
+    }
+    clEnqueueReadBuffer(commandQueue, unknowsBuff, true,
+                        0, size * sizeof(float), unknows, 0, NULL, NULL);
+
+    isSolve = true;
+
+    clFinish(commandQueue);
+	clReleaseKernel (frKernel);
+    clReleaseKernel (bsKernel);
+    clReleaseProgram(program);
+    clReleaseProgram(bsProgram);
 	releaseMemObject(
 	{ inBufTopDiagCr, inBufMidDiagCr,  inBufDownDiagCr,
 	  outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr });
 	clReleaseCommandQueue(commandQueue);
 	clReleaseContext(context);
 
-//	delete [] outTopDiag;
-//	delete [] outMidDiag;
-//	delete [] outDownDiag;
-//	delete [] outFreeMembers;
+	delete [] outTopDiag;
+	delete [] outMidDiag;
+	delete [] outDownDiag;
+	delete [] outFreeMembers;
+
 
 	return 0;
 }
@@ -124,7 +155,6 @@ std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
 			return out;
 		}
 		std::string printSpaces(size_t n) { return printChar(' ', n); }
-		std::string printSpaces() { return printChar(' ', stSpaces-1); }
 
 		std::string cutZeros(std::string string){
 			int i =0;
@@ -170,20 +200,16 @@ std::ostream& operator <<(std::ostream& os, TridigionalEquation& eq){
 	os << space.print(eq.downDiag[eq.size-2])<< space.print(eq.midDiag[eq.size - 1]) <<
 	  eq.freeMembers[eq.size-1] << "\n\n\n";
 
-	for(int i =0; i<eq.size-1; ++i){
-		os << eq.topDiag[i] << " ";
+	if(eq.isSolve) {
+		os << "Unknows: ";
+		printArray(os, eq.unknows, eq.size);
+	}else{
+		os << "System is not solved";
 	}
-	os << "\n";
-	for(int i =0; i<eq.size; ++i){
-		os << eq.midDiag[i] << " ";
-	}
-	os << "\n";
-	for(int i =0; i<eq.size-1; ++i){
-		os << eq.downDiag[i] << " ";
-	}
-	os << "\n";
-	for(int i =0; i<eq.size; ++i){
-		os << eq.freeMembers[i] << " ";
-	}
-	os << "\n";
+    os << "\n\n\n";
+
+	printArray(os, eq.topDiag, eq.size-1);
+	printArray(os, eq.midDiag, eq.size);
+	printArray(os, eq.downDiag, eq.size-1);
+	printArray(os, eq.freeMembers, eq.size);
 }

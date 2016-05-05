@@ -6,7 +6,7 @@
 #include <string>
 
 /*initialize OpenCL and return context and device*/
-int initCl(cl_device_id* device, cl_context* context);
+//int initCl(cl_device_id* device, cl_context* context);
 cl_kernel getKernelBySource(
 	cl_device_id* device, cl_context context, const char* sourceName);
 void releaseMemObject(std::vector<cl_mem>&& vec);
@@ -17,6 +17,8 @@ void readBuffers(cl_command_queue commandQueue, std::vector<size_t>& sizes,
  std::vector<cl_mem>&& bufers, std::vector<void*>&& outs);
 void setKernelArguments(cl_kernel kernel, size_t size, std::vector<void *>&& kernelArgs);
 void createBuffers(cl_context context, cl_mem_flags flag, std::vector<size_t>&& sizes,
+				   std::vector<cl_mem*>&& buffers);
+void createBuffers(cl_context context, cl_mem_flags flag, std::vector<size_t>& sizes,
 				   std::vector<cl_mem*>&& buffers);
 int convertToString(const char *filename, std::string& s);
 

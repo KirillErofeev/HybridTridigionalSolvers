@@ -1,4 +1,4 @@
-__kernel void cr(
+__kernel void fr(
         __global float* topDiag, __global float* midDiag,
         __global float* downDiag, __global float* freeMembers, unsigned numberOfReduction) {
 
