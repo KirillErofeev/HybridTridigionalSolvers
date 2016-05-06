@@ -1,7 +1,7 @@
 #include "TridigionalEquation.hpp"
 void testWithFullOutput(TridigionalEquation& eq, std::ostream& os){
 
-//    os << eq;
+    os << eq;
     eq.inverse();
     os << eq;
 }

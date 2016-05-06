@@ -60,9 +60,11 @@ int TridigionalEquation::inverse(){
     size_t numberOfEqs = size;
     size_t numberOfStep = 1;
     for(; numberOfEqs>2; ++numberOfStep) {
+
         isEvenNumberOfEqs[numberOfStep-1] = numberOfEqs & 1;
         const size_t globalWorkSize[1] = {numberOfEqs/2};
         clSetKernelArg(frKernel, 4, 4, &numberOfStep);
+		clSetKernelArg(frKernel, 5, 4, &isEvenNumberOfEqs[numberOfStep-1]);
         clEnqueueNDRangeKernel( commandQueue, frKernel,
                                 1, NULL, globalWorkSize, 0, 0, NULL, NULL);
         numberOfEqs/=2;
@@ -70,13 +72,15 @@ int TridigionalEquation::inverse(){
     --numberOfStep;
 
 
-//    readBuffers (commandQueue, sizes,
-//                {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
-//                { topDiag, midDiag, downDiag, freeMembers });
+    readBuffers (commandQueue, sizes,
+                {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
+                { topDiag, midDiag, downDiag, freeMembers });
 
     readBuffers (commandQueue, sizes,
                  {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
                  { outTopDiag, outMidDiag, outDownDiag, outFreeMembers });
+
+//	std::cout<< *this;
 
     if(numberOfEqs==2){
         size_t eq1 = (1 << (numberOfStep)) - 1;
@@ -111,6 +115,7 @@ int TridigionalEquation::inverse(){
                                 1, NULL, globalWorkSize, 0, 0, NULL, NULL);
             numberOfEqs = (numberOfEqs<<1) + isEvenNumberOfEqs[numberOfStep-1];
     }
+
     clEnqueueReadBuffer(commandQueue, unknowsBuff, true,
                         0, size * sizeof(float), unknows, 0, NULL, NULL);
 
