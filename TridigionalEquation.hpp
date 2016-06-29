@@ -43,8 +43,13 @@ struct TridigionalEquation {
 			T* topDiag, T* midDiag, T* downDiag, T* constTerms, size_t size);
     TridigionalEquation(TridigionalEquation& eq) = delete;
     TridigionalEquation& operator=(TridigionalEquation& eq) = delete;
+	/*Destroy terms solve methods*/
 	int inverse();
+	/*Cyclic reduction method*/
 	void solve();
+	/*Gaussian elimination*/
+	void tSolve();
+
 	const std::unique_ptr<T[]>& getUnknows() const{
 		return unknowns;
 	}
@@ -52,22 +57,17 @@ struct TridigionalEquation {
 	friend std::ostream& operator<< <T> (std::ostream& os, const TridigionalEquation<T>& eq);
 	void outMatrix(std::ostream&);
 private:
-	T* topDiag;
-	T* midDiag;
-	T* downDiag;
-	T* constTerms;
-    bool isSolve;
-
 	cl::CommandQueue commandQueue;
 	T* terms;
 	size_t size; // is number of equation
 	std::unique_ptr<T[]> unknowns;
 	size_t numberOfTerms; // number of elements in terms
+	bool isSolve;
 };
 template<class T>
 TridigionalEquation<T>::TridigionalEquation(cl::CommandQueue commandQueue, T* terms, size_t size)
 		: commandQueue(commandQueue), terms(terms), size(size),
-		  	unknowns(new T[size]), numberOfTerms(4*size-2){}
+		  	unknowns(new T[size]), numberOfTerms(4*size-2), isSolve(false){}
 
 template<class T>
 void TridigionalEquation<T>::solve(){
@@ -78,11 +78,11 @@ void TridigionalEquation<T>::solve(){
 	cl::Buffer in(context, CL_MEM_READ_WRITE, numberOfTerms*sizeof(T));
 	/*Non blocking write can be faster?*/
 	commandQueue.enqueueWriteBuffer(in, CL_TRUE, 0, numberOfTerms*sizeof(T), terms);//Map!
-	std::string frSource;
-	getStringSource<T>("fr", frSource);
-	cl::Program frProgram(context, frSource);
-	buildProgramWithOutputError(frProgram, {device}, std::cout);
-	cl::Kernel frKernel = createKernelWithOuputError(frProgram, "fr", std::cout);
+	static std::string frSource;
+	static int g = getStringSource<T>("fr", frSource);
+	static cl::Program frProgram(context, frSource);
+	static int bpwedr = buildProgramWithOutputError(frProgram, {device}, std::cout);
+	static cl::Kernel frKernel = createKernelWithOuputError(frProgram, "fr", std::cout);
 
 	size_t* isEvenNumberOfEqs = new size_t[(size_t)(log(size)/log(2)+2)];
 	size_t numberOfEqs = size;
@@ -105,7 +105,6 @@ void TridigionalEquation<T>::solve(){
 	}
 	--numberOfStep;
 	commandQueue.enqueueReadBuffer(in, CL_TRUE, 0, numberOfTerms*sizeof(T), terms);
-	printArray(std::cout, terms, numberOfTerms);
 
 	/*Solve two unknowns system*/
 	if(numberOfEqs==2){
@@ -123,13 +122,12 @@ void TridigionalEquation<T>::solve(){
 	cl::Buffer unknownsBuf(context, CL_MEM_READ_WRITE, size*sizeof(T));
 	/*Non blocking write can be faster?*/
 	commandQueue.enqueueWriteBuffer(unknownsBuf, CL_TRUE, 0, size*sizeof(T), unknowns.get());
+	static std::string bsSource;
+	static int dbs = getStringSource<T>("bs", bsSource);
+	static cl::Program bsProgram(context, bsSource);
 
-	std::string bsSource;
-	getStringSource<T>("bs", bsSource);
-	cl::Program bsProgram(context, bsSource);
-
-	buildProgramWithOutputError(bsProgram, {device}, std::cout);
-	cl::Kernel bsKernel = createKernelWithOuputError(bsProgram, "bs", std::cout);
+	static int bpwoe = buildProgramWithOutputError(bsProgram, {device}, std::cout);
+	static cl::Kernel bsKernel = createKernelWithOuputError(bsProgram, "bs", std::cout);
 	setKernelArgsWithOutputError(bsKernel, 0, in, std::cout);
 	setKernelArgsWithOutputError(bsKernel, 1, unknownsBuf, std::cout);
 	for(; numberOfStep>0; --numberOfStep) {
@@ -146,181 +144,44 @@ void TridigionalEquation<T>::solve(){
 	}
 	commandQueue.enqueueReadBuffer(unknownsBuf, CL_TRUE, 0, size*sizeof(T), unknowns.get());
 	isSolve = true;
-	printArray(std::cout, unknowns.get(), size);
+
 }
-
-
-template<class T>
-int TridigionalEquation<T>::inverse(){
-
-
-	cl_device_id device;
-	cl_context context;
-	ClInit::init(&device, &context);
-	cl_command_queue commandQueue = clCreateCommandQueue(context, device, NULL, NULL);
-	/*checkWith CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE*/
-
-	/* Create buffers*/
-	/* Create kernel arguments */
-	cl_mem inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers,
-			outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr, outBufFreeMembers;
-
-	std::vector<size_t> sizes = {
-			(size - 1)*sizeof(T), size*sizeof(T),
-			(size - 1)*sizeof(T), size*sizeof(T) };
-
-	createBuffers(context, CL_MEM_READ_WRITE, sizes,
-				  {&inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers});
-
-//	createBuffers(context, CL_MEM_READ_WRITE, sizes,
-//				  {&outBufTopDiagCr, &outBufMidDiagCr, &outBufDownDiagCr, &outBufFreeMembers});
-//
-
-	T* outTopDiag = new T[size - 1], *outMidDiag = new T[size],
-			*outDownDiag = new T[size - 1], *outConstTerms = new T[size];
-
-	writeBuffers (commandQueue, sizes,
-				  { inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers },
-				  { topDiag, midDiag, downDiag, constTerms });
-
-	/*Create kernels*/
-	cl_program program = getFrKernel<T>(context, &device);
-	cl_kernel frKernel = clCreateKernel(program, "fr", NULL);
-	setKernelArguments (frKernel, sizeof(cl_mem),
-						{ &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers });
-
-
-	/*Forward reduction*/
-	size_t* isEvenNumberOfEqs = new size_t[(size_t)(log(size)/log(2)+2)];
-	size_t numberOfEqs = size;
-	size_t numberOfStep = 1;
-	for(; numberOfEqs>2; ++numberOfStep) {
-		isEvenNumberOfEqs[numberOfStep-1] = numberOfEqs & 1;
-		const size_t globalWorkSize[1] = {numberOfEqs/2};
-		clSetKernelArg(frKernel, 4, 4, &numberOfStep);
-		clSetKernelArg(frKernel, 5, 4, &isEvenNumberOfEqs[numberOfStep-1]);
-		clEnqueueNDRangeKernel( commandQueue, frKernel,
-								1, NULL, globalWorkSize, 0, 0, NULL, NULL);
-		numberOfEqs/=2;
-	}
-	--numberOfStep;
-
-	readBuffers (commandQueue, sizes,
-				 {inBufTopDiagCr, inBufMidDiagCr, inBufDownDiagCr, inBufFreeMembers},
-				 { outTopDiag, outMidDiag, outDownDiag, outConstTerms });
-
-	if(numberOfEqs==2){
-		size_t eq1 = (1 << (numberOfStep)) - 1;
-		size_t eq2 = (2 << (numberOfStep)) - 1;
-		solveTwoUnknowsSystem({outMidDiag[eq1], outDownDiag[eq2-1], outTopDiag[eq1],
-							   outMidDiag[eq2], outConstTerms[eq1], outConstTerms[eq2]},
-							  unknowns[eq1], unknowns[eq2]);
-	}else{   /*numberOfEqs==1*/
-		size_t eq1 = (1 << (numberOfStep)) - 1;
-		unknowns[eq1] = outConstTerms[eq1]/outMidDiag[eq1];
-	}
-
-
-	/*Backward substitution*/
-	cl_mem unknownsBuff =
-			clCreateBuffer(context, CL_MEM_READ_WRITE, size*sizeof(T), NULL, NULL);
-	clEnqueueWriteBuffer(
-			commandQueue, unknownsBuff, true, 0, size*sizeof(T), unknowns.get(), 0, NULL, NULL);
-	cl_program bsProgram = getBsKernel<T>(context, &device);
-
-	cl_kernel bsKernel = clCreateKernel(bsProgram, "bs", NULL);
-
-	setKernelArguments(bsKernel, sizeof(cl_mem),
-					   { &inBufTopDiagCr, &inBufMidDiagCr, &inBufDownDiagCr, &inBufFreeMembers
-							   , &unknownsBuff });
-
-	for(; numberOfStep>0; --numberOfStep) {
-		const size_t globalWorkSize[1] = {numberOfEqs+isEvenNumberOfEqs[numberOfStep-1]};
-		clSetKernelArg(bsKernel, 5, 4, &numberOfStep);
-		clSetKernelArg(bsKernel, 6, 4, isEvenNumberOfEqs+numberOfStep-1);
-		clEnqueueNDRangeKernel( commandQueue, bsKernel,
-								1, NULL, globalWorkSize, 0, 0, NULL, NULL);
-		numberOfEqs = (numberOfEqs<<1) + isEvenNumberOfEqs[numberOfStep-1];
-	}
-
-	clEnqueueReadBuffer(commandQueue, unknownsBuff, true,
-						0, size * sizeof(T), unknowns.get(), 0, NULL, NULL);
-	isSolve = true;
-	clFinish(commandQueue);
-
-	clReleaseKernel (frKernel);
-	clReleaseKernel (bsKernel);
-	clReleaseProgram(program);
-	clReleaseProgram(bsProgram);
-	releaseMemObject(
-			{ inBufTopDiagCr, inBufMidDiagCr,  inBufDownDiagCr,
-			  outBufTopDiagCr, outBufMidDiagCr, outBufDownDiagCr });
-	clReleaseCommandQueue(commandQueue);
-	clReleaseContext(context);
-
-	delete [] outTopDiag;
-	delete [] outMidDiag;
-	delete [] outDownDiag;
-	delete [] outConstTerms;
-
-	return 0;
-}
-
-
 template<class T>
 std::ostream& operator <<(std::ostream& os, const TridigionalEquation<T>& eq){
-
-#ifdef HTS_DEBUG
-	os << space.print(eq.midDiag[0]) << space.print(eq.topDiag[0]);
-	os << space.printZero(eq.size - 2);
-
-	os<< eq.constTerms[0] << std::endl;
-	for(size_t i = 1; i < eq.size-1; ++i){
-		size_t j = i;
-		os << space.printZero(j-1);
-
-		os << space.print(eq.downDiag[i-1]) << space.print(eq.midDiag[i])
-			<< space.print(eq.topDiag[i]);
-
-		long lasts = ((long) eq.size) - i - 2;
-
-		if(lasts > 0)
-			os << space.printZero(lasts);
-		os << eq.constTerms[i] << std::endl;
-	}
-	os << space.printZero(eq.size - 2);
-
-	os << space.print(eq.downDiag[eq.size-2])<< space.print(eq.midDiag[eq.size - 1]) <<
-	  eq.constTerms[eq.size-1] << "\n\n\n";
-#endif
-
 	if(eq.isSolve) {
 		os << "Unknowns: ";
 		printArray(os, eq.unknowns.get(), eq.size);
 	}else{
 		os << "System is not solved";
 	}
-#ifdef HTS_DEBUG
-	os << "\n\n\n";
-#endif
-
-#ifdef HTS_DEBUG
-	printArray(os, eq.topDiag, eq.size-1);
-	printArray(os, eq.midDiag, eq.size);
-	printArray(os, eq.downDiag, eq.size-1);
-	printArray(os, eq.constTerms, eq.size);
-#endif
     return os;
 }
 
 template<class T>
-TridigionalEquation<T>::TridigionalEquation(
-		T* topDiag, T* midDiag, T* downDiag, T* constTerms, size_t size) :
-		topDiag(topDiag), midDiag(midDiag), downDiag(downDiag),
-		constTerms(constTerms), size(size), unknowns(new T[size]), isSolve(false) {}
-template<class T>
 size_t TridigionalEquation<T>::getSize(){
 	return size;
+}
+
+template<class T>
+void TridigionalEquation<T>::tSolve(){
+	size--;
+	terms[(0)*4 + 3] /= terms[(0)*4];
+	terms[(0)*4 + 1] /= terms[(0)*4];
+
+	for (int i = 1; i < size; i++) {
+		terms[(i)*4 + 3] /= terms[(i)*4] - terms[(i)*4 + 2]*terms[(i-1)*4 + 3];
+		terms[(i)*4 + 1] =
+				(terms[(i)*4 + 1] - terms[(i)*4 + 2]*terms[(i-1)*4 + 1])
+				/ (terms[(i)*4] - terms[(i)*4 + 2]*terms[(i-1)*4 + 3]);
+	}
+
+	terms[(size)*4 + 1] =
+			(terms[(size)*4 + 1] - terms[(size)*4 + 2]*terms[(size-1)*4 + 1])
+			/ (terms[(size)*4] - terms[(size)*4 + 2]*terms[(size-1)*4 + 3]);
+
+	for (int i = size; i-- > 0;) {
+		unknowns[(i)*4 + 1] -= terms[(i)*4 + 3]*terms[(i+1)*4 + 1];
+	}
 }
 
 template<class T>
@@ -372,28 +233,28 @@ void TridigionalEquation<T>::outMatrix(std::ostream& os){
 	private:
 		size_t stSpaces;
 
-	} space(17); //must be > max number of symbols in number
+	} space(17);
 
-	os << space.print(midDiag[0]) << space.print(topDiag[0]);
+	os << space.print(terms[(0)*4]) << space.print(terms[(0)*4 + 3]);
 	os << space.printZero(size - 2);
 
-	os<< constTerms[0] << std::endl;
+	os<< terms[(0)*4 + 1] << std::endl;
 	for(size_t i = 1; i < size-1; ++i){
 		size_t j = i;
 		os << space.printZero(j-1);
 
-		os << space.print(downDiag[i-1]) << space.print(midDiag[i])
-		<< space.print(topDiag[i]);
+		os << space.print(terms[(i-1)*4 + 2]) << space.print(terms[(i)*4])
+		<< space.print(terms[(i)*4 + 3]);
 
 		long lasts = ((long) size) - i - 2;
 
 		if(lasts > 0)
 			os << space.printZero(lasts);
-		os << constTerms[i] << std::endl;
+		os << terms[(i)*4 + 1] << std::endl;
 	}
 	os << space.printZero(size - 2);
 
-	os << space.print(downDiag[size-2])<< space.print(midDiag[size - 1]) <<
-	constTerms[size-1] << "\n\n\n";
+	os << space.print(terms[(size-2)*4 + 2])<< space.print(terms[(size - 1)*4]) <<
+	terms[(size-1)*4 + 1] << "\n\n\n";
 }
 #endif //TRIDIGIONAL_EQUATION_HPP

@@ -16,7 +16,7 @@ void solveAndShow(TridigionalEquation<T> &eq, std::ostream &os){
 #define MAX_RANGE 1e3
 
 template <class T>
-void test(size_t numberOfEquation, size_t dimMin, size_t dimMax,
+void test(cl::CommandQueue& commandQueue, size_t numberOfEquation, size_t dimMin, size_t dimMax,
           std::chrono::duration<double>& diff, bool isTestForEqual=true){
     std::random_device rd;
     std::ranlux48_base gen(rd());
@@ -44,9 +44,10 @@ void test(size_t numberOfEquation, size_t dimMin, size_t dimMax,
         }
         constTerms[size - 1] = down[size - 2] * xs[size - 2] + mid[size - 1] * xs[size - 1];
 
-        TridigionalEquation<T> e(top.get(), mid.get(), down.get(), constTerms.get(), size);
+        auto terms = make_terms(top.get(), mid.get(), down.get(), constTerms.get(), size);
+        TridigionalEquation<T> e(commandQueue, terms.get(), size);
         auto start = std::chrono::high_resolution_clock::now();
-        e.inverse();
+        e.solve();
         auto end = std::chrono::high_resolution_clock::now();
         diff += end - start;
 

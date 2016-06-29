@@ -55,11 +55,12 @@ std::unique_ptr<T[]> getRandomVector(size_t n, Gen& gen, Dist<T>& dist){
 }
 
 template<class T>
-T average(T* arr, size_t size){
-    T sum = 0;
+double average(T* arr, size_t size){
+    double sum = 0;
     for (size_t i = 0; i < size; ++i) {
         sum += arr[i];
     }
+//    std::cout << sum << " " << size << std::endl;
     return sum/size;
 }
 

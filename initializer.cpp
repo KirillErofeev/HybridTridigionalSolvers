@@ -166,7 +166,7 @@ void setKernelArgsWithOutputError(cl::Kernel& kernel, size_t index, size_t size,
 		exit(1);
 	}
 }
-void buildProgramWithOutputError(const cl::Program& program,
+int buildProgramWithOutputError(const cl::Program& program,
 								 const VECTOR_CLASS<cl::Device>& devices, std::ostream& out){
 	if(program.build(devices)!=CL_SUCCESS){
 		std::string log;
@@ -178,6 +178,7 @@ void buildProgramWithOutputError(const cl::Program& program,
 		}
 		exit(1);
 	}
+	return 0;
 }
 
 cl::Kernel createKernelWithOuputError(const cl::Program& program,

@@ -28,34 +28,22 @@ int main(int argc, char* argv[]){
     cl::Context context(devices[0]);
 
     cl::CommandQueue commandQueue(context, devices[0]);
+
     baseTestCpp(commandQueue);
+    std::chrono::duration<double> diff;
 
-    float inputTopDiag[] = { 2,5,3,3,2,1,5 };
-    float inputMiddleDiag[] = { 1,4,2,5,2,4,3,3 };
-    float inputDownDiag[] = { 3,1,4,1,2,2,1 };
-    float inputFreeMembers[] = { 2, 14, 14, 35, 21, 34, 63, 27 };
+    size_t n, dim;
+    std::cin >> n >> dim;
+    std::cout << "Test with float" << std::endl;
 
-    auto terms = make_terms(inputTopDiag, inputMiddleDiag, inputDownDiag, inputFreeMembers, 8);
-    TridigionalEquation<float> e(
-            commandQueue,
-            terms.get(), 8);
+    test<float>(commandQueue, n, dim, dim, diff, false);
+    std::cout << diff.count() << "\n";
 
-    e.solve();
+    std::chrono::duration<double> diffDouble;
+    std::cout << "Test with double" << std::endl;
+    test<double>(commandQueue, n, dim, dim, diffDouble, false);
+    std::cout << diffDouble.count() << "\n";
 
-//    std::chrono::duration<double> diff;
-//
-//    size_t n, dim;
-//    std::cin >> n >> dim;
-//    std::cout << "Test with float" << std::endl;
-//
-//    test<float>(n, dim, dim, diff, false);
-//    std::cout << diff.count() << "\n";
-//
-//    std::chrono::duration<double> diffDouble;
-//    std::cout << "Test with double" << std::endl;
-//    test<double>(n, dim, dim, diffDouble, false);
-//    std::cout << diffDouble.count() << "\n";
-//
-//    ClInit::release();
+    ClInit::release();
 	return 0;
 }

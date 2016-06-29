@@ -24,7 +24,7 @@ void createBuffers(cl_context context, cl_mem_flags flag, std::vector<size_t>& s
 				   std::vector<cl_mem*>&& buffers);
 int convertToString(const char *filename, std::string& s);
 
-void buildProgramWithOutputError(
+int buildProgramWithOutputError(
 		const cl::Program& program, const VECTOR_CLASS<cl::Device>& devices, std::ostream& out);
 
 cl::Kernel createKernelWithOuputError(const cl::Program& program,
@@ -33,34 +33,35 @@ void setKernelArgsWithOutputError(cl::Kernel& kernel, size_t index, cl::Buffer& 
 
 void setKernelArgsWithOutputError(cl::Kernel& kernel, size_t index, size_t size, void* ptr, std::ostream& out);
 template <class T>
-void getStringSource(const std::string& sourceName, std::string& out){
+int getStringSource(const std::string& sourceName, std::string& out){
 	std::cout << "Missing template in getFrKernel call or Unknown type of kernel's args" << std::endl;
 	assert(0);
+	return 1;
 }
 
 template <>
-inline void getStringSource<float>(const std::string& sourceName, std::string& out){
+inline int getStringSource<float>(const std::string& sourceName, std::string& out){
 	if(sourceName == "fr") {
 		convertToString("kernels/frFloat.cl", out);
-		return;
+		return 0;
 	}
 	if(sourceName == "bs"){
 		convertToString("kernels/bsFloat.cl", out);
-		return;
+		return 0;
 	}
 	std::cout << "Unknown name of source code" << std::endl;
 	assert(0);
 }
 
 template <>
-inline void getStringSource<double>(const std::string& sourceName, std::string& out){
+inline int getStringSource<double>(const std::string& sourceName, std::string& out){
 	if(sourceName == "fr") {
 		convertToString("kernels/frDouble.cl", out);
-		return;
+		return 0;
 	}
 	if(sourceName == "bs"){
 		convertToString("kernels/bsDouble.cl", out);
-		return;
+		return 0;
 	}
 	std::cout << "Unknown name of source code" << std::endl;
 	assert(0);
