@@ -11,7 +11,6 @@ int convertToString(const char *filename, std::string& s)
 	size_t size;
 	char*  str;
 	std::fstream f(filename, (std::fstream::in | std::fstream::binary));
-//	f.open(filename, (std::fstream::in | std::fstream::binary));
 	if (f.is_open())
 	{
 		size_t fileSize;
@@ -23,7 +22,6 @@ int convertToString(const char *filename, std::string& s)
 		f.close();
 		str[size] = '\0';
 		s = str;
-//        std::cout << str;
 		delete[] str;
 		return 0;
 	}
@@ -33,7 +31,6 @@ int convertToString(const char *filename, std::string& s)
 
 cl_kernel getKernelBySource(cl_device_id* device, cl_context context, 
 	const char* sourceName) {
-
 	cl_program program = getBuildBySource(sourceName, context, device);
 	cl_kernel kernel = clCreateKernel(program, "cr", NULL);
 	clReleaseProgram(program); //TODO debug
@@ -45,7 +42,6 @@ cl_program getProgramBySource(const char* sourceName, cl_context context) {
 	convertToString(sourceName, sourceStr);
 	const char *source = sourceStr.c_str();
 	size_t sourceSize[] = { strlen(source) };
-
 	cl_program program = clCreateProgramWithSource(
 		                      context, 1, &source, sourceSize, NULL);
 	return program;
@@ -53,11 +49,8 @@ cl_program getProgramBySource(const char* sourceName, cl_context context) {
 
 cl_program getBuildBySource(
 	const char* sourceName, cl_context context, const cl_device_id* device) {
-	
 	cl_program program = getProgramBySource(sourceName, context);
-
 	clBuildProgram(program, 1, device, NULL, NULL, NULL);
-
 	cl_ulong buildStatus = 1;
 	clGetProgramBuildInfo(program, *device, CL_PROGRAM_BUILD_STATUS, 8, (void *)&buildStatus, NULL);
 	if (buildStatus != CL_BUILD_SUCCESS) {
@@ -67,7 +60,7 @@ cl_program getBuildBySource(
         clGetProgramBuildInfo(
                 program, *device,   CL_PROGRAM_BUILD_STATUS  , SUPPOSED_LOG_SIZE, buildSt, &n);
         std::cout << buildSt << "   " << n << std::endl;
-		//delete [] buildSt ;
+		delete [] buildSt ;
 	}
 	return program;
 
@@ -158,4 +151,42 @@ void createBuffers(cl_context context, cl_mem_flags flag, std::vector<size_t>& s
 				context, flag, *sizesIter, NULL, NULL);
 		/*checkWith? CL_MEM_USE_HOST_PTR, CL_MEM_ALLOC_HOST_PTR, CL_MEM_COPY_HOST_PTR*/
 	}
+}
+
+void setKernelArgsWithOutputError(
+		cl::Kernel& kernel, size_t index, cl::Buffer& buffer, std::ostream& out){
+	if(int err = kernel.setArg(index, buffer)){
+		out<<" Error set kernel Arg: error number " << err << "\n";
+		exit(1);
+	}
+}
+void setKernelArgsWithOutputError(cl::Kernel& kernel, size_t index, size_t size, void* ptr, std::ostream& out){
+	if(int err = kernel.setArg(index, size, ptr)){
+		out<<" Error set kernel Arg: error number " << err << "\n";
+		exit(1);
+	}
+}
+void buildProgramWithOutputError(const cl::Program& program,
+								 const VECTOR_CLASS<cl::Device>& devices, std::ostream& out){
+	if(program.build(devices)!=CL_SUCCESS){
+		std::string log;
+		for (int i = 0; i < devices.size(); ++i) {
+			program.getBuildInfo<std::string>(devices[i], CL_PROGRAM_BUILD_LOG, &log);
+			std::string deviceName;
+			devices[0].getInfo(CL_DEVICE_NAME, &deviceName);
+			out <<" Error building on " << deviceName << " \n" << log << "\n";
+		}
+		exit(1);
+	}
+}
+
+cl::Kernel createKernelWithOuputError(const cl::Program& program,
+									  const char* kernelName, std::ostream& out){
+	int e=14;
+	cl::Kernel kernel(program, kernelName, &e);
+	if(e){
+		out<<" Error creating kernel: error number " << e << "\n";
+		exit(1);
+	}
+	return kernel;
 }

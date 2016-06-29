@@ -1,19 +1,4 @@
 #include "ClInit.hpp"
-void ClInit::init(cl_device_id* device, cl_context* context, cl_command_queue* commandQueue){
-
-    if(ClInit::device == nullptr) {
-        ClInit::device = new cl_device_id;
-        ClInit::context = new cl_context;
-        ClInit::commandQueue = new cl_command_queue;
-
-        initCl(ClInit::device, ClInit::context, ClInit::commandQueue);
-    }
-
-    *device = *ClInit::device;
-    *context = *ClInit::context;
-    *commandQueue = *ClInit::commandQueue;
-}
-
 void ClInit::init(cl_device_id* device, cl_context* context){
 
     if(ClInit::device == nullptr) {

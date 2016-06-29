@@ -1,54 +1,61 @@
+#include <chrono>
+#include <random>
 #include "TridigionalEquation.hpp"
 #include "test.hpp"
-#include <string>
-#include "initializer.hpp"
-#include "ClInit.hpp"
-#include "Kernels.hpp"
-#include <iostream>
+
 int main(int argc, char* argv[]){
+    std::vector<cl::Platform> platforms;
+    cl::Platform::get(&platforms);
+    if(platforms.size()<=0){
+        std::cout << "No platforms are available" << std::endl;
+        return 1;
+    }
+    std::vector<cl::Device> devices;
+    platforms[0].getDevices(CL_DEVICE_TYPE_GPU, &devices);
+    if(devices.size()<=0) {
+        std::cout << "No GPU are available, CPU device will be selected" << std::endl;
+        platforms[0].getDevices(CL_DEVICE_TYPE_CPU, &devices);
+        if(devices.size()<=0) {
+            std::cout << "No CPU are available" << std::endl;
+            return 1;
+        }
+    }
+    std::string deviceName;
+    devices[0].getInfo(CL_DEVICE_NAME, &deviceName);
+    std::cout << "Device " << deviceName << " was selected" << std::endl;
+    while(devices.size()>=1)
+        devices.pop_back();
+    cl::Context context(devices[0]);
 
-	float inputTopDiag[] = { 2,5,3,3,2,1,5 };
-	float inputMiddleDiag[] = { 1,4,2,5,2,4,3,3 };
-	float inputDownDiag[] = { 3,1,4,1,2,2,1 };
-	float inputFreeMembers[] = { 2, 14, 14, 35, 21, 34, 63, 27 };
+    cl::CommandQueue commandQueue(context, devices[0]);
+    baseTestCpp(commandQueue);
 
-	TridigionalEquation e(inputTopDiag, inputMiddleDiag, inputDownDiag, inputFreeMembers, 8);
-    testWithFullOutput(e, std::cout);
+    float inputTopDiag[] = { 2,5,3,3,2,1,5 };
+    float inputMiddleDiag[] = { 1,4,2,5,2,4,3,3 };
+    float inputDownDiag[] = { 3,1,4,1,2,2,1 };
+    float inputFreeMembers[] = { 2, 14, 14, 35, 21, 34, 63, 27 };
 
-    float inputTopDiag1[] = { 2,5,3,3,2,1 };
-    float inputMiddleDiag1[] = { 1,4,2,5,2,4,3};
-    float inputDownDiag1[] = { 3,1,4,1,2,2 };
-    float inputFreeMembers1[] = { 2, 14, 14, 35, 21, 34, 28};
+    auto terms = make_terms(inputTopDiag, inputMiddleDiag, inputDownDiag, inputFreeMembers, 8);
+    TridigionalEquation<float> e(
+            commandQueue,
+            terms.get(), 8);
 
-    TridigionalEquation e1 = {inputTopDiag1, inputMiddleDiag1, inputDownDiag1, inputFreeMembers1, 7};
-      testWithFullOutput(e1, std::cout);
+    e.solve();
 
-    float inputTopDiag2[] = { 2,5};
-    float inputMiddleDiag2[] = { 1,4,2};
-    float inputDownDiag2[] = { 3,1 };
-    float inputFreeMembers2[] = { 2, 14, 5};
-
-    TridigionalEquation e2 =
-            {inputTopDiag2, inputMiddleDiag2, inputDownDiag2, inputFreeMembers2, 3};
-    testWithFullOutput(e2, std::cout);
-
-    float inputTopDiag3[] = { 2,5,3,3,2};
-    float inputMiddleDiag3[] = { 1,4,2,5,2,4};
-    float inputDownDiag3[] = { 3,1,4,1,2};
-    float inputFreeMembers3[] = { 2, 14, 14, 35, 21, 28};
-
-    TridigionalEquation e3 =
-            {inputTopDiag3, inputMiddleDiag3, inputDownDiag3, inputFreeMembers3, 6};
-    testWithFullOutput(e3, std::cout);
-
-    float inputTopDiag4[] = { 2,5,3,3};
-    float inputMiddleDiag4[] = { 1,4,2,5,2};
-    float inputDownDiag4[] = { 3,1,4,1};
-    float inputFreeMembers4[] = { 2, 14, 14, 35, 11};
-
-    TridigionalEquation e4 = {inputTopDiag4, inputMiddleDiag4, inputDownDiag4, inputFreeMembers4, 5};
-    testWithFullOutput(e4, std::cout);
-
-    ClInit::release();
+//    std::chrono::duration<double> diff;
+//
+//    size_t n, dim;
+//    std::cin >> n >> dim;
+//    std::cout << "Test with float" << std::endl;
+//
+//    test<float>(n, dim, dim, diff, false);
+//    std::cout << diff.count() << "\n";
+//
+//    std::chrono::duration<double> diffDouble;
+//    std::cout << "Test with double" << std::endl;
+//    test<double>(n, dim, dim, diffDouble, false);
+//    std::cout << diffDouble.count() << "\n";
+//
+//    ClInit::release();
 	return 0;
 }
