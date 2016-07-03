@@ -1,5 +1,5 @@
 #include <chrono>
-#include <random>
+//#include <random>
 #include "TridigionalEquation.hpp"
 #include "test.hpp"
 
@@ -36,14 +36,13 @@ int main(int argc, char* argv[]){
     std::cin >> n >> dim;
     std::cout << "Test with float" << std::endl;
 
-    test<float>(commandQueue, n, dim, dim, diff, false);
+    test<float>(commandQueue, n, dim, dim, diff, true);
     std::cout << diff.count() << "\n";
 
     std::chrono::duration<double> diffDouble;
     std::cout << "Test with double" << std::endl;
-    test<double>(commandQueue, n, dim, dim, diffDouble, false);
+    test<double>(commandQueue, n, dim, dim, diffDouble, true);
     std::cout << diffDouble.count() << "\n";
 
-    ClInit::release();
 	return 0;
 }

@@ -1,12 +1,12 @@
 #ifndef TRIDIGIONAL_EQUATION_HPP
 #define TRIDIGIONAL_EQUATION_HPP
 
-#include <cstddef>
+//#include <cstddef>
 #include <iostream>
 #include <memory>
 #include <CL/cl.hpp>
+#include <chrono>
 #include "initializer.hpp"
-#include "ClInit.hpp"
 #include "tools.hpp"
 
 //#define HTS_DEBUG
@@ -48,7 +48,7 @@ struct TridigionalEquation {
 	/*Cyclic reduction method*/
 	void solve();
 	/*Gaussian elimination*/
-	void tSolve();
+	void tSolve(std::chrono::duration<double>& t);
 
 	const std::unique_ptr<T[]>& getUnknows() const{
 		return unknowns;
@@ -163,24 +163,33 @@ size_t TridigionalEquation<T>::getSize(){
 }
 
 template<class T>
-void TridigionalEquation<T>::tSolve(){
-	size--;
+void TridigionalEquation<T>::tSolve(std::chrono::duration<double>& t){
+	auto start = std::chrono::high_resolution_clock::now();
+
+	size_t n = size - 1;
+
 	terms[(0)*4 + 3] /= terms[(0)*4];
 	terms[(0)*4 + 1] /= terms[(0)*4];
 
-	for (int i = 1; i < size; i++) {
-		terms[(i)*4 + 3] /= terms[(i)*4] - terms[(i)*4 + 2]*terms[(i-1)*4 + 3];
+	for (int i = 1; i < n; ++i) {
+		terms[(i)*4 + 3] /= (terms[(i)*4] - terms[(i-1)*4 + 2]*terms[(i-1)*4 + 3]);
 		terms[(i)*4 + 1] =
-				(terms[(i)*4 + 1] - terms[(i)*4 + 2]*terms[(i-1)*4 + 1])
-				/ (terms[(i)*4] - terms[(i)*4 + 2]*terms[(i-1)*4 + 3]);
+				(terms[(i)*4 + 1] - terms[(i-1)*4 + 2]*terms[(i-1)*4 + 1])
+				/ (terms[(i)*4] - terms[(i-1)*4 + 2]*terms[(i-1)*4 + 3]);
 	}
 
-	terms[(size)*4 + 1] =
-			(terms[(size)*4 + 1] - terms[(size)*4 + 2]*terms[(size-1)*4 + 1])
-			/ (terms[(size)*4] - terms[(size)*4 + 2]*terms[(size-1)*4 + 3]);
+	terms[(n)*4 + 1] =
+			(terms[(n)*4 + 1] - terms[(n-1)*4 + 2]*terms[(n-1)*4 + 1])
+			/ (terms[(n)*4] - terms[(n-1)*4 + 2]*terms[(n-1)*4 + 3]);
 
-	for (int i = size; i-- > 0;) {
-		unknowns[(i)*4 + 1] -= terms[(i)*4 + 3]*terms[(i+1)*4 + 1];
+	for (int i = n; i-- > 0;) {
+		terms[(i)*4 + 1] -= terms[(i)*4 + 3]*terms[(i+1)*4 + 1];
+	}
+	auto end = std::chrono::high_resolution_clock::now();
+	t += end - start;
+
+	for (int j = 0; j < size; ++j) {
+		unknowns[j] = terms[(j)*4 + 1];
 	}
 }
 
@@ -189,7 +198,7 @@ void TridigionalEquation<T>::outMatrix(std::ostream& os){
 	struct space{
 		space(size_t spaces) : stSpaces(spaces){}
 
-		std::string print(double f){
+		std::string print(T f){
 			std::string out = cutZeros(std::to_string(f));
 
 			if(stSpaces > out.size())

@@ -7,8 +7,6 @@
 #include <cassert>
 #include <CL/cl.hpp>
 
-/*initialize OpenCL and return context and device*/
-//int initCl(cl_device_id* device, cl_context* context);
 cl_kernel getKernelBySource(
 	cl_device_id* device, cl_context context, const char* sourceName);
 void releaseMemObject(std::vector<cl_mem>&& vec);
@@ -50,7 +48,7 @@ inline int getStringSource<float>(const std::string& sourceName, std::string& ou
 		return 0;
 	}
 	std::cout << "Unknown name of source code" << std::endl;
-	assert(0);
+	exit(1);
 }
 
 template <>
@@ -64,19 +62,19 @@ inline int getStringSource<double>(const std::string& sourceName, std::string& o
 		return 0;
 	}
 	std::cout << "Unknown name of source code" << std::endl;
-	assert(0);
+	exit(1);
 }
 
 template<class T>
 cl_program getFrKernel(cl_context context, const cl_device_id* device){
 	std::cout << "Missing template in getFrKernel call or Unknown type of kernel's args" << std::endl;
-	assert(0);
+	exit(1);
 }
 
 template<class T>
 cl_program getBsKernel(cl_context context, const cl_device_id* device){
 	std::cout << "Missing template in getBsKernel call or Unknown type of kernel's args" << std::endl;
-	assert(0);
+	exit(1);
 }
 
 template<>

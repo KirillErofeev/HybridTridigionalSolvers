@@ -2,6 +2,7 @@
 #define TEST_HPP
 
 #include <chrono>
+#include <random>
 
 void baseTest();
 void baseTestCpp(cl::CommandQueue commandQueue);
@@ -61,9 +62,14 @@ void test(cl::CommandQueue& commandQueue, size_t numberOfEquation, size_t dimMin
                     std::cout << "Received unknows:" << std::endl;
                     printArray(std::cout, e.getUnknows().get(), size);
                 }
-                if (size < 7)
-                    e.outMatrix(std::cout);
                 isFail = true;
+            }
+            if (size < 7) {
+                e.outMatrix(std::cout);
+                std::cout << "Actual uknowns: " << std::endl;
+                printArray(std::cout, xs.get(), size);
+                std::cout << "Received unknows:" << std::endl;
+                printArray(std::cout, e.getUnknows().get(), size);
             }
         }else{
             averageErrorForAll[k] = averageDifference(xs.get(), e.getUnknows().get(), size);

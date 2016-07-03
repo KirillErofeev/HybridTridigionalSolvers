@@ -22,8 +22,7 @@ __kernel void bs( __global double* terms, __global double* unknows,
                            - C(eq) * unknows[eq + (1 << offset)]) / B(eq);
         }else {
             /*First eq*/
-            unknows[eq] =
-                    (D(eq) - C(eq) * unknows[eq + (1 << offset)]) / B(eq);
+            unknows[eq] = (D(eq) - C(eq) * unknows[eq + (1 << offset)]) / B(eq);
         }
     }
 }

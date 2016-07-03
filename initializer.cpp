@@ -1,6 +1,6 @@
-#include <CL/cl.h>
+//#include <CL/cl.h>
 #include <iostream>
-#include <cstring>
+//#include <cstring>
 #include <fstream>
 #include "initializer.hpp"
 
@@ -65,31 +65,6 @@ cl_program getBuildBySource(
 	return program;
 
 }
-
-
-//int initCl(cl_device_id* device, cl_context* context) {
-//	/*Getting platforms and choose an available one.*/
-//	cl_uint numPlatforms;
-//	cl_platform_id platform = NULL;
-//	cl_int	status = clGetPlatformIDs(1, &platform, &numPlatforms);
-//	if (status != CL_SUCCESS || numPlatforms <= 0) {
-//		std::cout << "Error: Getting platforms!" << std::endl;
-//		return 1;
-//	}
-//	/*Choose device*/
-//	cl_uint		 numDevices = 0;
-//	status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, device, &numDevices);
-//	if (numDevices == 0) {
-//		std::cout << "No GPU device available." << std::endl;
-//		status = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, device, &numDevices);
-//		if (numDevices == 0) {
-//			std::cout << "No CPU device available." << std::endl;
-//			return 1;
-//		}
-//	}
-//    *context = clCreateContext(NULL, 1, device, NULL, NULL, NULL);
-//	return status;
-//}
 
 void readBuffers(cl_command_queue commandQueue, std::vector<size_t>& sizes,
  std::vector<cl_mem>&& bufers, std::vector<void*>&& outs) {
