@@ -141,19 +141,20 @@ void setKernelArgsWithOutputError(cl::Kernel& kernel, size_t index, size_t size,
 		exit(1);
 	}
 }
-int buildProgramWithOutputError(const cl::Program& program,
-								 const VECTOR_CLASS<cl::Device>& devices, std::ostream& out){
+int buildProgramWithOutputError(const cl::Program& program, const VECTOR_CLASS<cl::Device>& devices, std::ostream& out){
 	if(program.build(devices)!=CL_SUCCESS){
 		std::string log;
 		for (int i = 0; i < devices.size(); ++i) {
 			program.getBuildInfo<std::string>(devices[i], CL_PROGRAM_BUILD_LOG, &log);
-			std::string deviceName;
-			devices[0].getInfo(CL_DEVICE_NAME, &deviceName);
+			std::string deviceName; 
+                        std::cout << "Number of devices =" << devices.size() << "\n" << 
+                        "CL get info status " << devices[0].getInfo(CL_DEVICE_NAME, &deviceName) <<std::endl;
 			out <<" Error building on " << deviceName << " \n" << log << "\n";
+                        out << "Status =" << program.build(devices) << std::endl; 
 		}
-		exit(1);
+		//exit(1);
 	}
-	return 0;
+	return program.build(devices);
 }
 
 cl::Kernel createKernelWithOuputError(const cl::Program& program,

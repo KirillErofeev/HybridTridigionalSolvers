@@ -13,7 +13,7 @@ set_property(TARGET cl PROPERTY
 
 include_directories(${ATISTREAMSDKROOT}/include)
 
-set(SOURCE_FILES main.cpp ClInit.cpp initializer.cpp test.cpp)
+set(SOURCE_FILES main.cpp initializer.cpp test.cpp)
 
 add_executable(HybridTridigionalSolver_ ${SOURCE_FILES})
 target_link_libraries(HybridTridigionalSolver_  cl)

@@ -11,6 +11,7 @@
 
 //#define HTS_DEBUG
 //#define float cl_float
+
 template<class T=float> struct TridigionalEquation;
 
 template <class T>
@@ -43,7 +44,6 @@ struct TridigionalEquation {
 			T* topDiag, T* midDiag, T* downDiag, T* constTerms, size_t size);
     TridigionalEquation(TridigionalEquation& eq) = delete;
     TridigionalEquation& operator=(TridigionalEquation& eq) = delete;
-	/*Destroy terms solve methods*/
 	int inverse();
 	/*Cyclic reduction method*/
 	void solve();
@@ -53,6 +53,10 @@ struct TridigionalEquation {
 	const std::unique_ptr<T[]>& getUnknows() const{
 		return unknowns;
 	}
+        T getB(int n);
+        T getC(int n);
+        T getD(int n);
+        T getA(int n);
 	size_t getSize();
 	friend std::ostream& operator<< <T> (std::ostream& os, const TridigionalEquation<T>& eq);
 	void outMatrix(std::ostream&);
@@ -64,6 +68,23 @@ private:
 	size_t numberOfTerms; // number of elements in terms
 	bool isSolve;
 };
+
+template<class T>
+T TridigionalEquation<T>::getB(int n){
+    return *(terms+n*4);
+}
+template<class T>
+T TridigionalEquation<T>::getC(int n){
+    return *(terms+n*4+3);
+}
+template<class T>
+T TridigionalEquation<T>::getA(int n){
+    return *(terms+n*4+2);
+}
+template<class T>
+T TridigionalEquation<T>::getD(int n){
+    return *(terms+n*4+1);
+}
 template<class T>
 TridigionalEquation<T>::TridigionalEquation(cl::CommandQueue commandQueue, T* terms, size_t size)
 		: commandQueue(commandQueue), terms(terms), size(size),
@@ -74,7 +95,12 @@ void TridigionalEquation<T>::solve(){
 	cl::Device device;
 	cl::Context context;
 	commandQueue.getInfo<cl::Context>(CL_QUEUE_CONTEXT, &context);
-	commandQueue.getInfo<cl::Device>(CL_QUEUE_DEVICE, &device);
+
+        commandQueue.getInfo<cl::Device>(CL_QUEUE_DEVICE, &device);
+        cl::Device* device_ptr = &device;
+#ifdef DEBUG
+        std::cout << "sizeof(device) " << sizeof(device) << "\n" << *((long*)((void*)device_ptr)) << std::endl;
+#endif
 	cl::Buffer in(context, CL_MEM_READ_WRITE, numberOfTerms*sizeof(T));
 	/*Non blocking write can be faster?*/
 	commandQueue.enqueueWriteBuffer(in, CL_TRUE, 0, numberOfTerms*sizeof(T), terms);//Map!
@@ -82,6 +108,9 @@ void TridigionalEquation<T>::solve(){
 	static int g = getStringSource<T>("fr", frSource);
 	static cl::Program frProgram(context, frSource);
 	static int bpwedr = buildProgramWithOutputError(frProgram, {device}, std::cout);
+        if(bpwedr != 0){
+            std::cout << bpwedr << "Fail on source" << frSource << std::endl;
+        }
 	static cl::Kernel frKernel = createKernelWithOuputError(frProgram, "fr", std::cout);
 
 	size_t* isEvenNumberOfEqs = new size_t[(size_t)(log(size)/log(2)+2)];
@@ -165,32 +194,39 @@ size_t TridigionalEquation<T>::getSize(){
 template<class T>
 void TridigionalEquation<T>::tSolve(std::chrono::duration<double>& t){
 	auto start = std::chrono::high_resolution_clock::now();
+        std::vector<T> c(size-1);
+        std::vector<T> x(size);
+        std::vector<T> d(size);
+        
+        c[0] = getC(0) / getB(0);
+        for(int i = 1; i < size-1; ++i){
+            c[i] = getC(i)/(getB(i) - c[i-1]*getA(i-1));
+        }
+#ifdef GDEBUG
+        printArray(std::cout, c.data(), size-1);
+#endif
+        d[0] = getD(0) / getB(0);
+        for(int i = 1; i < size; ++i){
+            d[i] = (getD(i) - d[i-1]*getA(i-1))/(getB(i) - c[i-1]*getA(i-1));
+        }
+#ifdef GDEBUG
+        std::cout << "d" << std::endl;
+        printArray(std::cout, d.data(), size);
+#endif
+        x[size-1] = d[size-1];
+        for(int i = size-2; i >= 0; --i){
+            x[i] = d[i]-c[i]*x[i+1];
+        }
 
-	size_t n = size - 1;
-
-	terms[(0)*4 + 3] /= terms[(0)*4];
-	terms[(0)*4 + 1] /= terms[(0)*4];
-
-	for (int i = 1; i < n; ++i) {
-		terms[(i)*4 + 3] /= (terms[(i)*4] - terms[(i-1)*4 + 2]*terms[(i-1)*4 + 3]);
-		terms[(i)*4 + 1] =
-				(terms[(i)*4 + 1] - terms[(i-1)*4 + 2]*terms[(i-1)*4 + 1])
-				/ (terms[(i)*4] - terms[(i-1)*4 + 2]*terms[(i-1)*4 + 3]);
-	}
-
-	terms[(n)*4 + 1] =
-			(terms[(n)*4 + 1] - terms[(n-1)*4 + 2]*terms[(n-1)*4 + 1])
-			/ (terms[(n)*4] - terms[(n-1)*4 + 2]*terms[(n-1)*4 + 3]);
-
-	for (int i = n; i-- > 0;) {
-		terms[(i)*4 + 1] -= terms[(i)*4 + 3]*terms[(i+1)*4 + 1];
-	}
 	auto end = std::chrono::high_resolution_clock::now();
 	t += end - start;
-
-	for (int j = 0; j < size; ++j) {
-		unknowns[j] = terms[(j)*4 + 1];
-	}
+#ifdef GDEBUG
+        outMatrix(std::cout);
+        printArray(std::cout, x.data(), size);     
+#endif
+        std::copy(x.data(), getUnknows().get(), x.data());
+        for(int i = 0; i < size; ++i)
+            *(getUnknows().get() + i) = *(x.data() + i);
 }
 
 template<class T>
@@ -267,3 +303,6 @@ void TridigionalEquation<T>::outMatrix(std::ostream& os){
 	terms[(size-1)*4 + 1] << "\n\n\n";
 }
 #endif //TRIDIGIONAL_EQUATION_HPP
+/*
+ *a_i = v_{4i+2}, \ b_i = v_{4i}, \ c_i = v_{4i+2},  \ d_i = v_{4i+1}
+ */

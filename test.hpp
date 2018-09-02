@@ -18,7 +18,7 @@ void solveAndShow(TridigionalEquation<T> &eq, std::ostream &os){
 
 template <class T>
 void test(cl::CommandQueue& commandQueue, size_t numberOfEquation, size_t dimMin, size_t dimMax,
-          std::chrono::duration<double>& diff, bool isTestForEqual=true){
+          std::chrono::duration<double>& diff, bool isGpuSolving=true, bool isTestForEqual=true){
     std::random_device rd;
     std::ranlux48_base gen(rd());
     std::uniform_real_distribution<T> floatGenerator(MIN_RANGE, MAX_RANGE);
@@ -33,10 +33,19 @@ void test(cl::CommandQueue& commandQueue, size_t numberOfEquation, size_t dimMin
     }
     for (size_t k = 0; k < numberOfEquation && (!isFail || !isTestForEqual); ++k) {
         size_t size = intGenerator(gen);
+#ifndef WELL_CONDITIONED_TEST
+        std::function<T(T)> f = [](T t){return t*100;}; 
         auto top = getRandomVector(size - 1, gen, floatGenerator);
-        auto mid = getRandomVector(size, gen, floatGenerator);
+        auto mid = getRandomVector(size, gen, floatGenerator, f);
         auto down = getRandomVector(size - 1, gen, floatGenerator);
-        auto xs = getRandomVector(size, gen, floatGenerator);
+        auto xs = getRandomVector(size, gen, floatGenerator);       
+#else
+    //std::function
+    auto top = getRandomVector(size - 1, gen, floatGenerator);
+    auto mid = getRandomVector(size, gen, floatGenerator, []());
+    auto xs = getRandomVector(size, gen, floatGenerator);
+    down = top;
+#endif
 
         std::unique_ptr<T[]> constTerms(new T[size]);
         constTerms[0] = mid[0] * xs[0] + top[0] * xs[1];
@@ -48,9 +57,16 @@ void test(cl::CommandQueue& commandQueue, size_t numberOfEquation, size_t dimMin
         auto terms = make_terms(top.get(), mid.get(), down.get(), constTerms.get(), size);
         TridigionalEquation<T> e(commandQueue, terms.get(), size);
         auto start = std::chrono::high_resolution_clock::now();
-        e.solve();
+        std::chrono::duration<double> t;
+        if(isGpuSolving)
+            e.tSolve(t);
+        else
+            e.tSolve(t);
         auto end = std::chrono::high_resolution_clock::now();
-        diff += end - start;
+        if(!isGpuSolving)
+            diff = end - start;
+        else
+            diff = t;
 
         if(isTestForEqual) {
             if (!equal(xs.get(), e.getUnknows().get(), size)) {

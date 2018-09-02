@@ -45,11 +45,11 @@ std::unique_ptr<T> make_unique(Args&&... args){
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 };
 
-template<class T, class Gen, template <class> class Dist>
-std::unique_ptr<T[]> getRandomVector(size_t n, Gen& gen, Dist<T>& dist){
+template<class T, class Gen, template <class> class Dist, class F = T(T)>
+std::unique_ptr<T[]> getRandomVector(size_t n, Gen& gen, Dist<T>& dist, F f = [](T o){return o;}){
     std::unique_ptr<T[]> out(new T[n]);
     for (size_t i = 0; i<n; ++i) {
-        out[i] = dist(gen);
+        out[i] = f(dist(gen));
     }
     return out;
 }

@@ -1,4 +1,4 @@
-/*
+        /*
 	 * The view
 	 * b0 c0  0 0  0 ...  0    d0
 	 * a0 b1 c1 0  0 ...  0    d1
@@ -24,7 +24,8 @@
 #define C(i) terms[(i)*4 + 3]
 #define D(i) terms[(i)*4 + 1]
 
-__kernel void fr( __global double* terms, unsigned numberOfReduction, unsigned isEven) {
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
+__kernel void fr( global double* terms, unsigned numberOfReduction, unsigned isEven) {
 
     unsigned  offset = numberOfReduction-1; //1
     unsigned  eq = ((get_global_id(0) + 1) << numberOfReduction) - 1;//3
@@ -62,10 +63,10 @@ __kernel void fr( __global double* terms, unsigned numberOfReduction, unsigned i
         }
     }else{
         /*First eq*/
-        double cb = C(eq) / B(eq + (1<<offset)); //-3/1.33333
+        double cb = C(eq) / B(eq + (1<<offset)); 
 
         B(eq) = B(eq) - C(eq-(1<<offset)) * ab
-                - A(eq-1 + (1<<offset)) * cb;//-2.5-7.5/2.25 -
+                - A(eq-1 + (1<<offset)) * cb;
         C(eq) = -C(eq+(1<<offset)) * cb;
         D(eq) = D(eq) - D(eq-(1<<offset)) * ab -
                 D(eq+(1<<offset)) * cb;

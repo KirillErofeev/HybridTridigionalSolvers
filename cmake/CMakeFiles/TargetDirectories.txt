@@ -1,0 +1,3 @@
+/home/kerofeev/work/hts/HybridTridigionalSolvers/cmake/CMakeFiles/edit_cache.dir
+/home/kerofeev/work/hts/HybridTridigionalSolvers/cmake/CMakeFiles/rebuild_cache.dir
+/home/kerofeev/work/hts/HybridTridigionalSolvers/cmake/CMakeFiles/HybridTridigionalSolver_.dir

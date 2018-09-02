@@ -1,29 +1,9 @@
-/*
-	 * The view
-	 * b0 c0  0 0  0 ...  0    d0
-	 * a0 b1 c1 0  0 ...  0    d1
-	 * 0  a1 b2 c2 0 ...  0    d2
-	 * .. .. .. .. .. ..  0    ..
-	 * 0  0  0  0  0 an-2 bn-1 dn-1
-	 *
-	 * terms is b0 d0 a0 c0 b1 d1 a1 c1 ... bn-2 dn-2 an-2 cn-2 bn-1 dn-1
-	 * For example: b0 d0 a0 c0 b1 d1 a1 c1 b2 d2 a2 c2 b3 d3
-	 * size = 2 + 4*(n-1)
-	 *
-	 * b(i) = terms(i*4)
-	 * c(i) = terms(i*4+3)
-	 * a(i) = terms(i*4+2)
-	 * d(i) = terms(i*4+1)
-	 *
-	 * Client must release memory of terms!
-	 */
-
-//
 //#define A(i) terms[(i)*4 + 2]
 //#define B(i) terms[(i)*4]
 //#define C(i) terms[(i)*4 + 3]
 //#define D(i) terms[(i)*4 + 1]
 
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
 __kernel void fr( __global float* terms, unsigned numberOfReduction, unsigned isEven) {
     unsigned offset = numberOfReduction-1;
     unsigned eq = ((get_global_id(0) + 1) << numberOfReduction) - 1;

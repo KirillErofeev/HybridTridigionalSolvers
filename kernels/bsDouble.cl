@@ -4,6 +4,7 @@
 #define C(i) terms[(i)*4 + 3]
 #define D(i) terms[(i)*4 + 1]
 
+#pragma OPENCL EXTENSION cl_khr_fp64: enable
 __kernel void bs( __global double* terms, __global double* unknows,
                   unsigned numberOfReduction, unsigned isEvenEqs) {
 

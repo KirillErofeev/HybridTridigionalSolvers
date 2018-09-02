@@ -2,19 +2,20 @@
 #include "test.hpp"
 
 void baseTestCpp(cl::CommandQueue commandQueue){
-//    float inputTopDiag[] = { 2,5,3,3,2,1,5 };
-//    float inputMiddleDiag[] = { 1,4,2,5,2,4,3,3 };
-//    float inputDownDiag[] = { 3,1,4,1,2,2,1 };
-//    float inputFreeMembers[] = { 2, 14, 14, 35, 21, 34, 63, 27 };
+    float inputTopDiag[] = { 2,5,3,3,2,1,5 };
+    float inputMiddleDiag[] = { 1,4,2,5,2,4,3,3 };
+    float inputDownDiag[] = { 3,1,4,1,2,2,1 };
+    float inputFreeMembers[] = { 2, 14, 14, 35, 21, 34, 63, 27 };
 //
 //
-//        auto terms = make_terms(inputTopDiag, inputMiddleDiag, inputDownDiag,inputFreeMembers, 8);
-//        TridigionalEquation<float> e(
-//                commandQueue,
-//        terms.get(), 8);
-//        std::chrono::duration<double> t;
-//        e.tSolve(t);
-//        e.outMatrix(std::cout);
+        auto terms = make_terms(inputTopDiag, inputMiddleDiag, inputDownDiag,inputFreeMembers, 8);
+        TridigionalEquation<float> e(
+                commandQueue,
+        terms.get(), 8);
+        std::chrono::duration<double> t;
+        e.tSolve(t);
+        std::cout << t.count() << std::endl;
+        e.outMatrix(std::cout);
 //        printArray(std::cout, e.getUnknows().get(), 8);
 
 //    float inputTopDiag1[] = { 2,5,3,3,2,1 };
